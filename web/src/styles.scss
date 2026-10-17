@@ -1,0 +1,98 @@
+
+@use '@angular/material' as mat;
+@import "~bootstrap/dist/css/bootstrap.css";
+@import "@angular/material/prebuilt-themes/indigo-pink.css";
+// Define a custom typography config that overrides the font-family as well as the
+// `headlines` and `body-1` levels.
+$custom-typography: mat.define-typography-config( $headline: mat.define-typography-level(32px, 48px, 700), $body-1: mat.define-typography-level(16px, 24px, 500));
+// Override the typography in the core CSS.
+@include mat.core($custom-typography);
+html,
+body {
+    height: 100%;
+    
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+}
+
+.mat-drawer-content{
+    background-color: #222222;
+    color: #ffffff;
+}
+
+.mat-paginator-container, .mat-button-wrapper{
+    color: #ffffff;
+}
+.mat-table {
+    background-color: #414141;
+}
+.mat-header-cell,  .mat-cell {
+    color: #ffffff;
+}
+.mat-sidenav-container {
+    height: 100vh !important;
+}
+
+.mat-icon {
+    color: #b0a697 !important;
+}
+
+.mat-stroked-button {
+    color: #b0a697 !important;
+    background-color: #222222 !important;
+}
+
+.mat-sidenav {
+    box-shadow: -1px -1px 22px 5px rgba(0, 0, 0, 0.19);
+    -webkit-box-shadow: -1px -1px 22px 5px rgba(0, 0, 0, 0.19);
+    -moz-box-shadow: -1px -1px 22px 5px rgba(0, 0, 0, 0.19);
+    background: #222222 !important;
+}
+
+.mat-list-base .mat-list-item {
+  color: #b0a697;
+}
+.mat-list-base {
+    padding-top: 0px !important;
+}
+
+/* Round the top corners of the tabs */
+.custom-tabs .mat-tab-label, .custom-tabs .mat-tab-label-active {
+    border-top-left-radius: 12px; /* Adjust the radius as needed */
+    border-top-right-radius: 12px; /* Adjust the radius as needed */
+  }
+
+/* Style the tab background */
+.custom-tabs .mat-tab-label, .custom-tabs .mat-tab-label-active {
+background-color: #414141;
+}
+
+/* Style the active tab background */
+.custom-tabs .mat-tab-label.mat-tab-label-active {
+background-color: #dc9f10;
+}
+
+/* Style the tab label (font) */
+.custom-tabs .mat-tab-label, .custom-tabs .mat-tab-label-active {
+font-family: 'Your font family', sans-serif;
+font-size: 16px;
+color: #b0a697;
+}
+
+/* Style the active tab label (font) */
+.custom-tabs .mat-tab-label.mat-tab-label-active {
+color: #ffffff;
+}
+
+.mat-dialog-container {
+background-color: #414141;
+border-radius: 20px;
+padding: 2rem;
+}
+
+.container {
+    max-width: 95%;    
+}

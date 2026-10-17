@@ -1,0 +1,17 @@
+<mat-card>
+    <h1>Deepsea</h1>
+    <!--img src="assets/img/logos/logo.png" height="70px"--><br>
+    <mat-card-content>
+        <form name="loginForm" [formGroup]="loginForm" (ngSubmit)="login()">
+            <p>
+                <mat-form-field appearance="outline">
+                    <mat-label>IP Address</mat-label>
+                    <input formControlName="ip" matInput>
+                    <mat-icon matSuffix>person</mat-icon>
+                </mat-form-field>
+            </p>        
+            <button class="login" mat-stroked-button>LogIn</button>
+        </form>
+        <br>
+    </mat-card-content>
+</mat-card>

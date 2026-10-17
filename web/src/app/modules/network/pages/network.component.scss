@@ -1,0 +1,166 @@
+table {
+    width: 100%;
+}
+
+
+.action_icon:hover {
+    color: #3F51B4 !important;
+}
+
+.opciones-container {
+    display: grid;
+    /* Crea columnas automáticas de mínimo 160px. Se ajustan solas al ancho disponible */
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 15px; /* Espacio uniforme entre cards */
+    width: 100%;
+}
+
+.opcion-card {
+    background-color: #363434;
+    color: #a1988b;
+    /* Quitamos el width fijo de 200px para que el grid lo controle */
+    height: 150px;
+    padding: 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+}  
+
+.opcion-card.selected {
+    background-color: #916d17;
+    color: #ffffff; /* Un poco más claro para mejor contraste */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.opcion-card h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.opcion-card p {
+    font-size: 14px;
+    line-height: 18px;
+}
+
+@media (max-width: 576px) {
+    .opciones-container {
+        /* En celulares muy pequeños, 2 columnas exactas */
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .opcion-card {
+        height: 120px; /* Reducimos un poco la altura en móvil */
+        padding: 10px;
+    }
+
+    .opcion-card h3 {
+        font-size: 14px;
+    }
+}
+
+
+.password-input {
+    position: relative;
+}
+
+.password-input .toggle-password {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+
+.password-input .toggle-password mat-icon {
+    font-size: 18px;
+    margin-top: 5px;
+}
+
+.green {
+    color: green !important;
+}
+    
+.red {
+    color: red !important;
+}
+
+button.connected-icon.loading {
+    color: gray !important; /* Change the color to gray or any other desired color */
+}
+
+button.connected-icon.green {
+    color: green !important; /* Change the color to green or any other desired color */
+}
+
+button.connected-icon.red {
+    color: red !important; /* Change the color to red or any other desired color */
+}
+
+.slider-container {
+    display: flex;
+    align-items: center;
+}
+
+.slider-label {
+    margin: 0 10px;
+    color: #a1988b;
+}
+
+ 
+
+.mat-slider-horizontal .mat-slider-thumb {
+    background-color: #916d17 !important;
+}
+
+.mat-slider-horizontal .mat-slider-thumb-label {
+    color: #916d17 !important;
+    background-color: #916d17 !important;
+}
+
+.mat-slider-horizontal .mat-slider-track-fill {
+    background-color: #916d17 !important;
+}
+ 
+
+.select-dark {
+    background-color: #333;
+    color: white;
+    border: 1px solid #555;
+    &:focus {
+        background-color: #444;
+        color: white;
+        border-color: #ffb300; // El color naranja de tus botones
+        box-shadow: none;
+    }
+}
+
+.macro-section {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+label {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+
+.layer_buttons
+{
+  color:black; 
+  background: #dc9f10; 
+  border-radius: 5px; 
+  padding: 5px;
+  margin: 5px;
+  min-width: 100px;
+}
