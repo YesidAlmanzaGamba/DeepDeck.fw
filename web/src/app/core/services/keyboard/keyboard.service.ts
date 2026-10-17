@@ -147,25 +147,6 @@ export class KeyboardService {
     ['KC_AUDIO_VOL_DOWN', 'VOL_DOWN', 174],
   ];
 
-  private keyListMouse: KeyArray = [
-    ['KC_MS_UP', 'MsUP', 241],
-    ['KC_MS_DOWN', 'MsDOWN', 240], // Inverted to work better
-    ['KC_MS_LEFT', 'MsLEFT', 243],
-    ['KC_MS_RIGHT', 'MsRIGHT', 242], // Inverted to work better
-    ['KC_MS_BTN1', 'MsBTN1', 244],
-    ['KC_MS_BTN2', 'MsBTN2', 245],
-    ['KC_MS_BTN3', 'MsBTN3', 246],
-    ['KC_MS_BTN4', 'MsBTN4', 247],
-    ['KC_MS_BTN5', 'MsBTN5', 248],
-    ['KC_MS_WH_UP', 'MsWH_UP', 249],
-    ['KC_MS_WH_DOWN', 'MsWhDOWN', 250],
-    ['KC_MS_WH_LEFT', 'MsWhLEFT', 251],
-    ['KC_MS_WH_RIGHT', 'MsWhRIGHT', 252],
-    ['KC_MS_ACCEL0', 'MsACCEL0', 253],
-    ['KC_MS_ACCEL1', 'MsACCEL1', 254],
-    ['KC_MS_ACCEL2', 'MsACCEL2', 255],
-  ];
-
   private keyListMacro: KeyArray = [];
 
   private keyListAll: KeyArray = [];
@@ -187,8 +168,7 @@ export class KeyboardService {
       ...this.keyListBasic, 
       ...this.keyListNumpad, 
       ...this.keyListFunctions, 
-      ...this.keyListMedia, 
-      ...this.keyListMouse, 
+      ...this.keyListMedia,
       ...this.keyListMacro
     ];
 
@@ -243,10 +223,6 @@ export class KeyboardService {
 
   getKeyListMedia(): KeyArray {
     return this.keyListMedia;
-  }
-
-  getKeyListMouse(): KeyArray {
-    return this.keyListMouse;
   }
 
   getKeyListMacro(): KeyArray {

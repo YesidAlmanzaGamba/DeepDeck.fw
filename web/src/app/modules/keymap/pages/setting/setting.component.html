@@ -202,22 +202,7 @@
                         </li>
                       </ul>
                     </mat-tab>
-                    <mat-tab label="Mouse">
-                      <ul id="keyboard" *ngFor="let key of objectKeys(keylist_mouse)">
-                        <li
-                          (click)="pressKey(keylist_mouse[key][1], keylist_mouse[key][2],keylist_mouse[key][0])"
-                          [ngStyle]="{'font-size': getTextFontSize(keylist_mouse[key][1])}"
-                        >
-                          <span class="regular-name" [ngStyle]="{'font-size': getTextFontSize(keylist_mouse[key][1])}">
-                              {{keylist_mouse[key][1]}}
-                          </span>
-                          <span class="fixed-name" [ngStyle]="{'font-size': getTextFontSize(keylist_mouse[key][0])}">
-                              {{keylist_mouse[key][0]}}
-                          </span>
-                        </li>
-                      </ul>
-                    </mat-tab>
-          
+
                     <mat-tab label="Macros">
                       <ul id="keyboard" *ngFor="let key of objectKeys(keylist_macros)">
                         <li

@@ -328,7 +328,6 @@ void encoder_command(uint8_t command, uint16_t encoder_commands[ENCODER_SIZE]){
     uint8_t type = encoder_commands[0];
     uint16_t action;
     uint8_t media_state[2] = {0,0};
-    uint8_t mouse_state[5] = {0,0,0,0,0};
     uint8_t key_state[REPORT_LEN] = {0};
     uint8_t modifier = 0;
 
@@ -375,48 +374,10 @@ void encoder_command(uint8_t command, uint16_t encoder_commands[ENCODER_SIZE]){
             media_state[1] = 0;
             xQueueSend(media_q,(void*)&media_state, (TickType_t) 0); // Reset command
         }
-        //Review mouse actions
-        else if(action >= KC_MS_UP && action <= KC_MS_ACCEL2)
+        //Old mouse keycodes are no longer supported
+        else if(action >= KC_LEGACY_MOUSE_FIRST && action <= KC_LEGACY_MOUSE_LAST)
         {
-            switch(action)
-            {
-                case KC_MS_UP:
-                    mouse_state[2] = 15;
-                    break;
-
-                case KC_MS_DOWN:
-                    mouse_state[2] = -15;
-                    break;
-
-                case KC_MS_LEFT:
-                    mouse_state[1] = -15;
-                    break;
-
-                case KC_MS_RIGHT:
-                    mouse_state[1] = 15;
-                    break;
-
-                case KC_MS_BTN1:
-                    mouse_state[0] = 1;
-                    break;
-
-                case KC_MS_BTN2:
-                    mouse_state[0] = 2;
-                    break;
-
-                case KC_MS_WH_UP:
-                    mouse_state[3] = 1;
-                    break;
-                case KC_MS_WH_DOWN:
-                    mouse_state[3] = -1;
-                    break;
-            }
-            xQueueSend(mouse_q,(void*)&mouse_state, (TickType_t) 0);
-            mouse_state[0] = 0;
-            mouse_state[1] = 0;
-            mouse_state[2] = 0;
-            mouse_state[3] = 0;
-            xQueueSend(mouse_q,(void*)&mouse_state, (TickType_t) 0);
+            ESP_LOGW("Encoder","Mouse keycode %d ignored (mouse support removed)", action);
         }
         //Review Macro actions
         else if(action >= MACRO_BASE_VAL && action < MACRO_HOLD_MAX_VAL)

@@ -140,7 +140,7 @@ void key_reports(void *pvParameters)
 			   sizeof report_state);
 
 		// Do not send anything if queues are uninitialized
-		if (mouse_q == NULL || keyboard_q == NULL || joystick_q == NULL)
+		if (keyboard_q == NULL)
 		{
 			ESP_LOGE(TAG, "queues not initialized");
 			continue;

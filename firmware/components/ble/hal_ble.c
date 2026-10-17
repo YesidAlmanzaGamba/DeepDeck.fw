@@ -30,12 +30,8 @@
 
 /// @brief Battery level monitor queue
 QueueHandle_t battery_q;
-/// @brief Input queue for sending joystick reports
-QueueHandle_t joystick_q;
 /// @brief Input queue for sending keyboard reports
 QueueHandle_t keyboard_q;
-/// @brief Input queue for sending mouse reports
-QueueHandle_t mouse_q;
 /// @brief Input queue for sending media reports
 QueueHandle_t media_q;
 
@@ -73,18 +69,12 @@ static esp_ble_adv_params_t hidd_adv_params = { .adv_int_min = 0x20,
 
 ///@brief Is Keyboard interface active?
 uint8_t activateKeyboard = 0;
-///@brief Is Mouse interface active?
-uint8_t activateMouse = 0;
-///@brief Is Joystick interface active?
-uint8_t activateJoystick = 0;
 ///@brief Is Media interface active?
 uint8_t activateMedia = 0;
 
 uint8_t battery_report[1] = { 0 };
 uint8_t key_report[HID_KEYBOARD_IN_RPT_LEN] = { 0 };
-uint8_t mouse_report[HID_MOUSE_IN_RPT_LEN] = { 0 };
 uint8_t media_report[HID_CC_IN_RPT_LEN] = { 0 };
-uint8_t joystick_report[HID_JOYSTICK_IN_RPT_LEN] = { 0 };
 
 /** @brief Callback for HID events. */
 static void hidd_event_callback(esp_hidd_cb_event_t event,
@@ -221,69 +211,6 @@ void halBLETask_keyboard(void * params) {
 
 }
 
-void halBLETask_mouse(void * params) {
-
-	//Empty queue if initialized (there might be something left from last connection)
-
-	if (mouse_q != NULL)
-		xQueueReset(mouse_q);
-
-	//check if queue is initialized
-	if (mouse_q != NULL) {
-		{
-			while (1) 
-			{
-
-				//pend on MQ, if timeout triggers, just wait again.
-				if (xQueueReceive(mouse_q, &mouse_report, portMAX_DELAY)) {
-
-					//if we are not connected, discard.
-					if (sec_conn == false)
-						continue;
-					hid_dev_send_report(hidd_le_env.gatt_if, hid_conn_id,
-					HID_RPT_ID_MOUSE_IN, HID_REPORT_TYPE_INPUT,
-							HID_MOUSE_IN_RPT_LEN, mouse_report);
-				}
-			}
-		}
-	} else {
-		ESP_LOGE(LOG_TAG, "ble hid queue not initialized, retry in 1s");
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
-	}
-
-}
-
-void halBLETask_joystick(void * params) {
-
-	//Empty queue if initialized (there might be something left from last connection)
-	if (joystick_q != NULL)
-		xQueueReset(joystick_q);
-
-	//check if queue is initialized
-	if (joystick_q != NULL) {
-		{
-			while (1) 
-			{
-				//pend on MQ, if timeout triggers, just wait again.
-				if (xQueueReceive(joystick_q, &joystick_report,
-						portMAX_DELAY)) {
-
-					//if we are not connected, discard.
-					if (sec_conn == false)
-						continue;
-					hid_dev_send_report(hidd_le_env.gatt_if, hid_conn_id,
-					HID_RPT_ID_JOY_IN, HID_REPORT_TYPE_INPUT,
-							HID_JOYSTICK_IN_RPT_LEN, joystick_report);
-				}
-			}
-		}
-	} else {
-		ESP_LOGE(LOG_TAG, "ble hid queue not initialized, retry in 1s");
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
-	}
-
-}
-
 void halBLETask_media(void * params) {
 
 	//Empty queue if initialized (there might be something left from last connection)
@@ -345,18 +272,13 @@ esp_err_t halBLEEnDisable(int onoff) {
 
 /** @brief Main init function to start HID interface (C interface)
  * @see hid_ble */
-esp_err_t halBLEInit(uint8_t enableKeyboard, uint8_t enableMedia,
-		uint8_t enableMouse, uint8_t enableJoystick) {
+esp_err_t halBLEInit(uint8_t enableKeyboard, uint8_t enableMedia) {
 	activateKeyboard = enableKeyboard;
 	activateMedia = enableMedia;
-	activateMouse = enableMouse;
-	activateJoystick = enableJoystick;
 
 	//initialise queues, even if they might not be used.
 	battery_q = xQueueCreate(32, 1* sizeof(uint8_t));
-	mouse_q = xQueueCreate(32, HID_MOUSE_IN_RPT_LEN * sizeof(uint8_t));
 	keyboard_q = xQueueCreate(32, REPORT_LEN * sizeof(uint8_t));
-	joystick_q = xQueueCreate(32, HID_JOYSTICK_IN_RPT_LEN * sizeof(uint8_t));
 	media_q = xQueueCreate(32, HID_CC_IN_RPT_LEN * sizeof(uint8_t));
 
 	// Initialize NVS.
@@ -431,20 +353,14 @@ esp_err_t halBLEInit(uint8_t enableKeyboard, uint8_t enableMedia,
 	//xTaskCreate(&halBLETask, "ble_task", TASK_BLE_STACKSIZE, NULL, HAL_BLE_TASK_PRIORITY_BASE, NULL);
 	TaskHandle_t xBLETask_battery;
 	TaskHandle_t xBLETask_keyboard;
-	TaskHandle_t xBLETask_mouse;
 	TaskHandle_t xBLETask_media;
-	TaskHandle_t xBLETask_joystick;
 
 	xTaskCreate(halBLETask_battery, "ble_task_battery",
 			TASK_BLE_STACKSIZE, NULL, 6, &xBLETask_battery);
 	xTaskCreate(halBLETask_keyboard, "ble_task_keyboard",
 			TASK_BLE_STACKSIZE, NULL, 6, &xBLETask_keyboard);
-	xTaskCreate(halBLETask_mouse, "ble_task_mouse",
-			TASK_BLE_STACKSIZE, NULL, 6, &xBLETask_mouse);
 	xTaskCreate(halBLETask_media, "ble_task_media",
 			TASK_BLE_STACKSIZE, NULL, 6, &xBLETask_media);
-	xTaskCreate(halBLETask_joystick, "ble_task_joystick",
-			TASK_BLE_STACKSIZE, NULL, 6, &xBLETask_joystick);
 
 	//set log level according to define
 	esp_log_level_set(HID_LE_PRF_TAG, LOG_LEVEL_BLE);

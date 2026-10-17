@@ -116,7 +116,6 @@ export class SettingComponent implements OnInit {
   keylist_numpad = this.keyboardService.getKeyListNumpad();
   keylist_functions = this.keyboardService.getKeyListFunctions();
   keylist_media = this.keyboardService.getKeyListMedia();
-  keylist_mouse = this.keyboardService.getKeyListMouse();
   keylist_macro_aux = []
   keylist_macros = [];
   tuple = [];

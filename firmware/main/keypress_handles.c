@@ -317,6 +317,12 @@ uint8_t *check_key_state(dd_layer *keymap)
 						continue;
 					}
 
+					// mouse keycodes are no longer supported, do not send them as keys
+					if ((keycode >= KC_LEGACY_MOUSE_FIRST) && (keycode <= KC_LEGACY_MOUSE_LAST))
+					{
+						continue;
+					}
+
 					// checking for media control keycodes
 					if ((keycode >= KC_MEDIA_NEXT_TRACK) && (keycode <= KC_AUDIO_VOL_DOWN))
 					{

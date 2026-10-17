@@ -164,7 +164,7 @@ void app_main()
 	nvs_load_macros();
 
 	// activate keyboard BT stack
-	halBLEInit(1, 1, 1, 0);
+	halBLEInit(1, 1);
 	ESP_LOGI("HIDD", "MAIN finished...");
 
 	// init i2c. The OLED driver does not install the I2C driver itself, it relies on this bus.

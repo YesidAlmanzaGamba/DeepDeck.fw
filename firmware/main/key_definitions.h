@@ -132,23 +132,6 @@
 #define KC_SLCT KC_SELECT
 #define KC_AGIN KC_AGAIN
 #define KC_PSTE KC_PASTE
-/* Mousekey */
-#define KC_MS_U KC_MS_UP
-#define KC_MS_D KC_MS_DOWN
-#define KC_MS_L KC_MS_LEFT
-#define KC_MS_R KC_MS_RIGHT
-#define KC_BTN1 KC_MS_BTN1
-#define KC_BTN2 KC_MS_BTN2
-#define KC_BTN3 KC_MS_BTN3
-#define KC_BTN4 KC_MS_BTN4
-#define KC_BTN5 KC_MS_BTN5
-#define KC_WH_U KC_MS_WH_UP
-#define KC_WH_D KC_MS_WH_DOWN
-#define KC_WH_L KC_MS_WH_LEFT
-#define KC_WH_R KC_MS_WH_RIGHT
-#define KC_ACL0 KC_MS_ACCEL0
-#define KC_ACL1 KC_MS_ACCEL1
-#define KC_ACL2 KC_MS_ACCEL2
 /* Sytem Control */
 #define KC_PWR  KC_SYSTEM_POWER
 #define KC_SLEP KC_SYSTEM_SLEEP
@@ -489,26 +472,11 @@ enum internal_special_keycodes {
 	/**************************************/
 	/* 0xE0-E7 for Modifiers. DO NOT USE. */
 	/**************************************/
-
-	/* Mousekey */
-	KC_MS_UP = 0xF0,
-	KC_MS_DOWN,
-	KC_MS_LEFT,
-	KC_MS_RIGHT,
-	KC_MS_BTN1,
-	KC_MS_BTN2,
-	KC_MS_BTN3,
-	KC_MS_BTN4,
-	KC_MS_BTN5, /* 0xF8 */
-	/* Mousekey wheel */
-	KC_MS_WH_UP,
-	KC_MS_WH_DOWN,
-	KC_MS_WH_LEFT,
-	KC_MS_WH_RIGHT, /* 0xFC */
-	/* Mousekey accel */
-	KC_MS_ACCEL0,
-	KC_MS_ACCEL1,
-	KC_MS_ACCEL2 /* 0xFF */
 };
+
+/* 0xF0-0xFF were mouse keys. Mouse support was removed, but layers saved by older
+ * firmware may still contain these codes, so they are ignored instead of being sent. */
+#define KC_LEGACY_MOUSE_FIRST 0xF0
+#define KC_LEGACY_MOUSE_LAST 0xFF
 
 #endif

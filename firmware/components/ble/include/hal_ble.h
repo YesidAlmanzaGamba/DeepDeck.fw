@@ -47,17 +47,9 @@
  * @see keyboard_command_t */
 extern QueueHandle_t battery_q;
 
-/** @brief Queue for sending mouse reports
- * @see mouse_command_t */
-extern QueueHandle_t mouse_q;
-
 /** @brief Queue for sending keyboard reports
  * @see keyboard_command_t */
 extern QueueHandle_t keyboard_q;
-
-/** @brief Queue for sending joystick reports
- * @see joystick_command_t */
-extern QueueHandle_t joystick_q;
 
 /** @brief Queue for sending media reports
  * @see media_command_t */
@@ -101,8 +93,9 @@ esp_err_t halBLEEnDisable(int onoff);
 void halBLEReset(uint8_t exceptDevice);
 
 /** @brief Main init function to start HID interface (C interface)
+ * @note The HID descriptor still declares mouse and joystick reports so already paired
+ * hosts keep working, but DeepDeck never sends them.
  * @see hid_ble */
-esp_err_t halBLEInit(uint8_t enableKeyboard, uint8_t enableMedia,
-		uint8_t enableMouse, uint8_t enableJoystick);
+esp_err_t halBLEInit(uint8_t enableKeyboard, uint8_t enableMedia);
 
 #endif /* _HAL_BLE_H_ */
