@@ -24,6 +24,16 @@
 extern esp_err_t i2s_user_lock(void);
 extern esp_err_t i2s_user_unlock(void);
 
+/* These used to come from a Kconfig file in this component. Kconfig files inside the
+ * project break ESP-IDF 4.4 when the project path contains spaces, so they are plain
+ * defaults now (same values as the old Kconfig defaults). */
+#ifndef CONFIG_I2C_BUS_DYNAMIC_CONFIG
+#define CONFIG_I2C_BUS_DYNAMIC_CONFIG 1 /*!< re-check configs and re-install the i2c driver before each transfer */
+#endif
+#ifndef CONFIG_I2C_MS_TO_WAIT
+#define CONFIG_I2C_MS_TO_WAIT 200 /*!< task block time when trying to take the bus, in ms */
+#endif
+
 #define I2C_ACK_CHECK_EN 0x1     /*!< I2C master will check ack from slave*/
 #define I2C_ACK_CHECK_DIS 0x0     /*!< I2C master will not check ack from slave */
 #define I2C_BUS_FLG_DEFAULT (0)

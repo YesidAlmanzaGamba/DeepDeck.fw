@@ -15,8 +15,9 @@ idf.py -C firmware build
 idf.py -C firmware -p COM3 flash monitor
 ```
 
-ESP-IDF 4.4 cannot build from a path that contains spaces. If the repository lives in
-such a folder, build from a copy or clone in a path without spaces.
+ESP-IDF 4.4 breaks when a component *inside the project* has a `Kconfig` file and the project
+path contains spaces. Keep project components free of `Kconfig` files (use `#ifndef` defaults
+in the source instead) so the firmware builds from any folder.
 
 ## Building the web app into the firmware
 
