@@ -365,24 +365,6 @@ table {
     font-size: 15px; /* Set the desired font size */
   }
 
-  #gesture-container {
-    display: flex;
-    flex-direction: column;
-    gap: 2px; /* Adjust the gap between each item as needed */
-    width: 180px;
-    height: 390px;
-    padding:10px;
-    margin: auto;
-    border: 2px solid #b0a697;
-    border-radius: 10px;
-  }
-
-  #gesture-container h3 {
-    color: #dc9f10;
-    align-items: center;
-    margin: 0px;
-  }
-   
     .btn-p{
       background: #dc9f10; 
       border-radius: 5px; 

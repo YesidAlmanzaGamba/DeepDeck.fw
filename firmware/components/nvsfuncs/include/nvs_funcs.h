@@ -95,6 +95,8 @@ void nvs_load_layouts(void);
  */
 esp_err_t nvs_update_layout_position(void);
 
+esp_err_t nvs_migrate_layer_v1(nvs_handle_t nvs_layer_handle, const char *layer_key, dd_layer *layer);
+
 void nvs_load_macros(void);
 esp_err_t nvs_write_default_macros(nvs_handle_t nvs_handle);
 esp_err_t nvs_create_new_macro(dd_macros macros);

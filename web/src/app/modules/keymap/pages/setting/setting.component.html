@@ -15,7 +15,6 @@
         <div class="col-md-12">
           <button (click)="cambiarVisibilidad('deppDeck')"       class="btn-p">Keyboard</button>
           <button (click)="cambiarVisibilidad('knobs')"  class="btn-p">Knobs</button>
-          <button (click)="cambiarVisibilidad('gestures')"  class="btn-p">Gestures</button>
         </div> 
   
         <div class="row justify-content-center mt-5 bg-ahuyama" [hidden]="!mostrarDeppDeck">
@@ -139,67 +138,7 @@
                   </button>
                 </div>
               </div>
-            </div> 
-
-            <div class="col-md-4 mt-3" [hidden]="!mostrarGestures">
-              <div id="gesture-container">
-                <h3>Gestures</h3>
-
-                <div class="keydeck-thin">
-                  <div class="description">
-                    <i class="material-icons">keyboard_arrow_up</i>Up</div>
-                  <button [ngClass]="{'active': seletedDeepFunctionKey == 'layer.gesture_map.up'}" 
-                          (click)="pressDeepFunctionKey('layer.gesture_map.up')">
-                    {{GetKeyNameByKeyCode(layer.gesture_map.up)}}
-                  </button>
-                </div>
-
-                <div class="keydeck-thin">
-                  <div class="description">
-                    <i class="material-icons">keyboard_arrow_down</i>Down</div>
-                  <button [ngClass]="{'active': seletedDeepFunctionKey == 'layer.gesture_map.down'}" 
-                          (click)="pressDeepFunctionKey('layer.gesture_map.down')">
-                    {{GetKeyNameByKeyCode(layer.gesture_map.down)}}
-                  </button>
-                </div>
-
-                <div class="keydeck-thin">
-                  <div class="description">
-                    <i class="material-icons">keyboard_arrow_left</i>Left</div>
-                  <button [ngClass]="{'active': seletedDeepFunctionKey == 'layer.gesture_map.left'}" 
-                          (click)="pressDeepFunctionKey('layer.gesture_map.left')">
-                    {{GetKeyNameByKeyCode(layer.gesture_map.left)}}
-                  </button>
-                </div>
-
-                <div class="keydeck-thin">
-                  <div class="description">
-                    <i class="material-icons">keyboard_arrow_right</i>Right</div>
-                  <button [ngClass]="{'active': seletedDeepFunctionKey == 'layer.gesture_map.right'}" 
-                          (click)="pressDeepFunctionKey('layer.gesture_map.right')">
-                    {{GetKeyNameByKeyCode(layer.gesture_map.right)}}
-                  </button>
-                </div>
-
-                <div class="keydeck-thin">
-                  <div class="description">
-                    <i class="material-icons">adjust</i>Near</div>
-                  <button [ngClass]="{'active': seletedDeepFunctionKey == 'layer.gesture_map.near'}" 
-                          (click)="pressDeepFunctionKey('layer.gesture_map.near')">
-                    {{GetKeyNameByKeyCode(layer.gesture_map.near)}}
-                  </button>
-                </div>
-
-                <div class="keydeck-thin">
-                  <div class="description">
-                    <i class="material-icons">highlight_off</i>Far</div>
-                  <button [ngClass]="{'active': seletedDeepFunctionKey == 'layer.gesture_map.far'}" 
-                          (click)="pressDeepFunctionKey('layer.gesture_map.far')">
-                    {{GetKeyNameByKeyCode(layer.gesture_map.far)}}
-                  </button>
-                </div>
-              </div>
-            </div> 
+            </div>
         </div>
       </div>
       <div class="col-md-6 v-line">

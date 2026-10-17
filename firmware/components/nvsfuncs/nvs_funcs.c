@@ -157,25 +157,84 @@ void nvs_read_layers(dd_layer *layers_array)
 	case ESP_ERR_NVS_NOT_FOUND:
 		ESP_LOGE(TAG, "Value not set yet. Running routine to write default values");
 		nvs_write_default_layers(nvs_layer_handle);
+		layer_num = LAYERS;
 		break;
 	case ESP_OK:
 		ESP_LOGI(TAG, "Layers in memory: %d", layer_num);
 		break;
 	default:
 		ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(res));
+		layer_num = 0;
 		break;
 	}
 
 	for (int i = 0; i < layer_num; i++)
 	{
 		sprintf(layer_key, "layer_%d", i);
-		res = nvs_get_blob(nvs_layer_handle, layer_key, (void *)&layers_array[i], &dd_layer_size);
+
+		// Query the stored size first: layers saved by older firmware use the dd_layer_v1 layout
+		res = nvs_get_blob(nvs_layer_handle, layer_key, NULL, &dd_layer_size);
+		if (res != ESP_OK)
+		{
+			ESP_LOGE(TAG, "Error (%s) reading layer %s!\n", esp_err_to_name(res), layer_key);
+			continue;
+		}
+
+		if (dd_layer_size == sizeof(dd_layer))
+		{
+			res = nvs_get_blob(nvs_layer_handle, layer_key, (void *)&layers_array[i], &dd_layer_size);
+		}
+		else if (dd_layer_size == sizeof(dd_layer_v1))
+		{
+			res = nvs_migrate_layer_v1(nvs_layer_handle, layer_key, &layers_array[i]);
+		}
+		else
+		{
+			ESP_LOGE(TAG, "Layer %s has unknown size %d, skipping", layer_key, dd_layer_size);
+			continue;
+		}
+
 		if (res != ESP_OK)
 		{
 			ESP_LOGE(TAG, "Error (%s) reading layer %s!\n", esp_err_to_name(res), layer_key);
 		}
 	}
 	nvs_close(nvs_layer_handle);
+}
+
+/**
+ * @brief Convert a layer stored with the old dd_layer_v1 layout (with gesture map)
+ * to dd_layer and write it back, so the conversion only happens once.
+ *
+ * @param nvs_layer_handle open handle of the layers namespace
+ * @param layer_key NVS key of the layer
+ * @param layer output layer
+ * @return esp_err_t
+ */
+esp_err_t nvs_migrate_layer_v1(nvs_handle_t nvs_layer_handle, const char *layer_key, dd_layer *layer)
+{
+	dd_layer_v1 old_layer;
+	size_t old_size = sizeof(dd_layer_v1);
+
+	esp_err_t res = nvs_get_blob(nvs_layer_handle, layer_key, (void *)&old_layer, &old_size);
+	if (res != ESP_OK)
+		return res;
+
+	memset(layer, 0, sizeof(dd_layer));
+	memcpy(layer->name, old_layer.name, sizeof(layer->name));
+	memcpy(layer->key_map, old_layer.key_map, sizeof(layer->key_map));
+	memcpy(layer->key_map_names, old_layer.key_map_names, sizeof(layer->key_map_names));
+	memcpy(layer->left_encoder_map, old_layer.left_encoder_map, sizeof(layer->left_encoder_map));
+	memcpy(layer->right_encoder_map, old_layer.right_encoder_map, sizeof(layer->right_encoder_map));
+	layer->active = old_layer.active;
+	memcpy(layer->uuid_str, old_layer.uuid_str, sizeof(layer->uuid_str));
+
+	res = nvs_set_blob(nvs_layer_handle, layer_key, (void *)layer, sizeof(dd_layer));
+	if (res == ESP_OK)
+		res = nvs_commit(nvs_layer_handle);
+
+	ESP_LOGW(TAG, "Layer %s migrated from the old format (gesture map dropped)", layer_key);
+	return res;
 }
 
 /**

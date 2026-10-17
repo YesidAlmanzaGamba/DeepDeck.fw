@@ -108,14 +108,6 @@ export class SettingComponent implements OnInit {
       "single_press":	0,
       "long_press":	0,
       "double_press":	0
-    },
-    "gesture_map":	{
-      "up":	0,
-      "down":	0,
-      "left":	0,
-      "right":	0,
-      "near":	0,
-      "far":	0
     }
   }
 
@@ -145,7 +137,6 @@ export class SettingComponent implements OnInit {
   
   inputChanged: Subject<string> = new Subject<string>();
   mostrarKnobs: boolean = false;
-  mostrarGestures: boolean = false;
   mostrarDeppDeck: boolean = true;
 
   selectedColor: string = '#ffffff';  
@@ -214,15 +205,9 @@ export class SettingComponent implements OnInit {
   cambiarVisibilidad(div: string) {
     if (div === 'knobs') {
       this.mostrarKnobs = true;
-      this.mostrarGestures = false;
       this.mostrarDeppDeck=false;
-    } else if (div === 'gestures') {
+    } else if (div === 'deppDeck') {
       this.mostrarKnobs = false;
-      this.mostrarGestures = true;
-      this.mostrarDeppDeck=false;
-    }else if (div === 'deppDeck') {
-      this.mostrarKnobs = false;
-      this.mostrarGestures = false;
       this.mostrarDeppDeck=true;
     }
   }

@@ -37,14 +37,6 @@ interface JsonLayer {
     long_press: number;
     double_press: number;
   };
-  gesture_map:	{
-		up:	number,
-		down:	number,
-		left:	number,
-		right:	number,
-		near:	number,
-		far:	number
-	}
 }
 
 function validateJsonLayer(jsonData: any, uuid_needed: boolean): jsonData is JsonLayer {
@@ -220,27 +212,6 @@ function validateJsonLayer(jsonData: any, uuid_needed: boolean): jsonData is Jso
     typeof jsonData.left_encoder_map.double_press !== 'number'
   ) {
     console.log("Not valid layer json. left_encoder_map not valid");
-    return false;
-  }
-
-   // Check gesture_map
-  if (
-    typeof jsonData.gesture_map !== 'object' ||
-    jsonData.gesture_map === null ||
-    !jsonData.gesture_map.hasOwnProperty('up') ||
-    !jsonData.gesture_map.hasOwnProperty('down') ||
-    !jsonData.gesture_map.hasOwnProperty('left') ||
-    !jsonData.gesture_map.hasOwnProperty('right') ||
-    !jsonData.gesture_map.hasOwnProperty('near') ||
-    !jsonData.gesture_map.hasOwnProperty('far') ||
-    typeof jsonData.gesture_map.up !== 'number' ||
-    typeof jsonData.gesture_map.down !== 'number' ||
-    typeof jsonData.gesture_map.left !== 'number' ||
-    typeof jsonData.gesture_map.right !== 'number' ||
-    typeof jsonData.gesture_map.near !== 'number' ||
-    typeof jsonData.gesture_map.far !== 'number'
-  ) {
-    console.log("Not valid layer json. gesture_map not valid");
     return false;
   }
 

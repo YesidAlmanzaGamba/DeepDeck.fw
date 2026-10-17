@@ -74,7 +74,7 @@
 
 #include "plugins.h"
 #include "deepdeck_tasks.h"
-#include "gesture_handles.h"
+#include "i2c_bus.h"
 #include "wifi_handles.h"
 #include "server.h"
 #include "spiffs.h"
@@ -83,8 +83,6 @@
 // plugin functions
 static config_data_t config;
 
-// xSemaphore for i2C shared resource
-SemaphoreHandle_t xSemaphore = NULL;
 SemaphoreHandle_t Wifi_initSemaphore = NULL;
 
 #define USER_CHECK(a, str, ret)                                                \
@@ -120,8 +118,6 @@ esp_err_t i2s_user_unlock(void)
  */
 void app_main()
 {
-	xSemaphore = xSemaphoreCreateBinary();
-
 	// Reset the rtc GPIOS
 	rtc_matrix_deinit();
 	// Setup keys matrix
@@ -171,7 +167,7 @@ void app_main()
 	halBLEInit(1, 1, 1, 0);
 	ESP_LOGI("HIDD", "MAIN finished...");
 
-	// init i2c
+	// init i2c. The OLED driver does not install the I2C driver itself, it relies on this bus.
 	int i2c_master_port = I2C_MASTER_NUM;
 	i2c_config_t conf = {
 		.mode = I2C_MODE_MASTER,
@@ -193,13 +189,6 @@ void app_main()
 		while (1)
 			vTaskDelay(pdMS_TO_TICKS(200));
 	}
-	// activate gesture
-#ifdef GESTURE_ENABLE
-	apds9960_init(&i2c_bus);
-	vTaskDelay(pdMS_TO_TICKS(200));
-	xTaskCreate(gesture_task, " gesture task", MEM_GESTURE_TASK, NULL, PRIOR_GESTURE_TASK, &xGesture);
-	ESP_LOGI("Gesture", "initialized");
-#endif
 
 	// activate oled
 #ifdef OLED_ENABLE

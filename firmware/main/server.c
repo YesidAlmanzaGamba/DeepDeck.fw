@@ -22,7 +22,7 @@
 #include "nvs_keymaps.h"
 #include "key_definitions.h"
 #include "nvs_funcs.h"
-#include "gesture_handles.h"
+#include "keymap.h"
 // #include "mdns.h"
 #include "esp_vfs.h"
 
@@ -617,7 +617,6 @@ esp_err_t get_layer_url_handler(httpd_req_t *req)
 
 	char *string = NULL;
 	cJSON *encoder_item = NULL;
-	cJSON *gesture_item = NULL;
 	cJSON *is_active = NULL;
 	int index = 0;
 	int index_col = 0;
@@ -675,17 +674,6 @@ esp_err_t get_layer_url_handler(httpd_req_t *req)
 			abort();
 
 		cJSON_AddItemToObject(r_encoder_map, encoder_items_names[index], encoder_item);
-	}
-
-	cJSON *gesture_map = cJSON_CreateObject();
-	cJSON_AddItemToObject(layer_object, "gesture_map", gesture_map);
-
-	for (index = 0; index < GESTURE_SIZE; index++)
-	{
-		gesture_item = cJSON_CreateNumber(key_layouts[pos].gesture_map[index]);
-		if (gesture_item == NULL)
-			abort();
-		cJSON_AddItemToObject(gesture_map, gesture_items_names[index], gesture_item);
 	}
 
 	// string = malloc(strlen(cJSON_Print(layer_object)) + 1);
@@ -1138,14 +1126,6 @@ esp_err_t update_layer_url_handler(httpd_req_t *req)
 		temp_layout.right_encoder_map[i] = item->valueint;
 		i++;
 	}
-	i = 0;
-	cJSON *gesture_map = cJSON_GetObjectItem(payload, "gesture_map");
-	cJSON_ArrayForEach(item, gesture_map)
-	{
-		// printf("%s: %d\n", item->string, item->valueint);
-		temp_layout.gesture_map[i] = item->valueint;
-		i++;
-	}
 
 	cJSON *is_active = cJSON_GetObjectItem(payload, "active");
 	bool active = cJSON_IsTrue(is_active);
@@ -1330,14 +1310,6 @@ esp_err_t create_layer_url_handler(httpd_req_t *req)
 	{
 		// printf("%s: %d\n", item->string, item->valueint);
 		new_layer.right_encoder_map[i] = item->valueint;
-		i++;
-	}
-	i = 0;
-	cJSON *gesture_map = cJSON_GetObjectItem(payload, "gesture_map");
-	cJSON_ArrayForEach(item, gesture_map)
-	{
-		// printf("%s: %d\n", item->string, item->valueint);
-		new_layer.gesture_map[i] = item->valueint;
 		i++;
 	}
 

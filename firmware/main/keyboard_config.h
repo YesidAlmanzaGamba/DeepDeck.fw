@@ -58,9 +58,6 @@
 
 #define RGB_LEDS
 
-// Gesture sensor. Comment to disable
-#define GESTURE_ENABLE
-
 // Wifi. Comment to disable
 #define WIFI_ENABLE
 
@@ -123,7 +120,6 @@ extern uint16_t macros[MACROS_NUM][MACRO_LEN];
 
 
 #define ENCODER_SIZE 5 //Number of actions that the encoder has
-#define GESTURE_SIZE 6 //Number of actions gesture sensor has
 
 typedef struct config_data {
 	char bt_device_name[MAX_BT_DEVICENAME_LENGTH];
@@ -160,7 +156,6 @@ extern TaskHandle_t xKeyreportTask;
 #define	MEM_LEDS_TASK				1024*4
 #define MEM_ENCODER_TASK			1024*4
 #define MEM_OLED_TASK				1024*4
-#define MEM_GESTURE_TASK			1024*4
 
 #define PRIOR_BASE					3
 #define PRIOR_WIFI_TASK				4
@@ -170,7 +165,6 @@ extern TaskHandle_t xKeyreportTask;
 #define PRIOR_LEDS_TASK				6
 #define PRIOR_ENCODER_TASK			4
 #define PRIOR_OLED_TASK				3
-#define PRIOR_GESTURE_TASK			4
 
 
 #endif

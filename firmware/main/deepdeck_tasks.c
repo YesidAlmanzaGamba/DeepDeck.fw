@@ -31,8 +31,6 @@
 
 #include "keycode_conv.h"
 
-#include "gesture_handles.h"
-
 static const char *TAG = "KeyReport";
 
 #define KEY_REPORT_TAG "KEY_REPORT"
@@ -87,7 +85,6 @@ void oled_task(void *pvParameters)
 			}
 			break;
 		case S_SETTINGS: // Settings mode, showing the internal menu
-			disable_interrup_pin();
 			menu_init();
 
 			vTaskDelay(pdMS_TO_TICKS(200));
@@ -96,44 +93,9 @@ void oled_task(void *pvParameters)
 			ble_connected_oled();
 
 			deepdeck_status = S_NORMAL;
-			// release gesture sensor again
-			// apds9960_free();
-			config_interrup_pin();
 			break;
 		}
 		vTaskDelay(pdMS_TO_TICKS(100));
-	}
-}
-
-void gesture_task(void *pvParameters)
-{
-
-	while (true)
-	{
-
-		if (xSemaphoreTake(xSemaphore, 10) == pdTRUE)
-		{
-
-			// Do not send anything if queues are uninitialized
-			if (keyboard_q == NULL || joystick_q == NULL)
-			{
-				ESP_LOGE(TAG, "queues not initialized");
-				continue;
-			}
-
-			// ESP_LOGW("Gesture", "xSemaphore Take");
-			do
-			{
-				vTaskDelay(pdMS_TO_TICKS(10));
-			} while (deepdeck_status == S_SETTINGS);
-			read_gesture();
-		}
-		else
-		{
-			vTaskDelay(pdMS_TO_TICKS(10));
-		}
-
-		vTaskDelay(pdMS_TO_TICKS(10));
 	}
 }
 
@@ -237,7 +199,6 @@ void rgb_leds_task(void *pvParameters)
 		key_led_modes();
 	}
 }
-extern uint8_t gesture_disable_g;
 void encoder_report(void *pvParameters)
 {
 	uint8_t encoder1_status = 0;
@@ -309,13 +270,6 @@ void encoder_report(void *pvParameters)
 
 		if (encoder2_status != past_encoder2_state)
 		{
-
-			if ((encoder2_status != ENC_IDLE) && (!gesture_disable_g))
-			{
-				ESP_LOGI("Encoder 2", "USED");
-				gesture_disable_g = 1;
-			}
-
 			DEEP_SLEEP = false;
 
 			// Check if both encoder are pushed, to enter settings mode.
