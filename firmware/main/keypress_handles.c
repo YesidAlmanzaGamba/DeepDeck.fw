@@ -134,6 +134,17 @@ static uint32_t millis()
 	return esp_timer_get_time() / 1000;
 }
 
+// Make a layer the active one: refresh the OLED and schedule saving it,
+// so the same layer is active again after a reboot or deep sleep.
+void set_current_layout(uint8_t layer)
+{
+	current_layout = layer;
+#ifdef OLED_ENABLE
+	xQueueSend(layer_recieve_q, &current_layout, (TickType_t)0);
+#endif
+	nvs_schedule_current_layer_save(current_layout);
+}
+
 uint32_t prev_time = 0;
 // adjust current layer
 void layer_adjust(uint16_t keycode)
@@ -193,9 +204,7 @@ void layer_adjust(uint16_t keycode)
 
 				break;
 			}
-#ifdef OLED_ENABLE
-			xQueueSend(layer_recieve_q, &current_layout, (TickType_t)0);
-#endif
+			set_current_layout(current_layout);
 
 #ifdef RGB_LEDS
 			rgb_mode_t led_mode;
@@ -264,7 +273,8 @@ uint8_t *check_key_state(dd_layer *keymap)
 					// checking for layer hold
 					if ((keycode >= LAYER_HOLD_BASE_VAL) && (keycode <= LAYER_HOLD_MAX_VAL))
 					{
-						if (layer_hold_flag == 0)
+						// the held layer is temporary: it is shown but not saved as the active layer
+						if ((layer_hold_flag == 0) && ((keycode - LAYER_HOLD_BASE_VAL) < layers_num))
 						{
 							prev_layout = current_layout;
 							current_layout = (keycode - LAYER_HOLD_BASE_VAL);
@@ -344,10 +354,11 @@ uint8_t *check_key_state(dd_layer *keymap)
 				if (matrix_state[row][col - MATRIX_COLS * pad] == 0)
 				{
 
-					// checking for layer hold release
-					if ((key_layouts[prev_layout].key_map[row][col] >= LAYER_HOLD_BASE_VAL) && (keycode <= LAYER_HOLD_MAX_VAL) && (layer_hold_flag == 1))
+					// checking for layer hold release: go back to the layer that was active before the hold
+					uint16_t hold_keycode = key_layouts[prev_layout].key_map[row][col];
+					if ((hold_keycode >= LAYER_HOLD_BASE_VAL) && (hold_keycode <= LAYER_HOLD_MAX_VAL) && (layer_hold_flag == 1))
 					{
-						current_layout = 0;
+						current_layout = prev_layout;
 						layer_hold_flag = 0;
 #ifdef OLED_ENABLE
 						xQueueSend(layer_recieve_q, &current_layout,

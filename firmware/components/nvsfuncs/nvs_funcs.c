@@ -43,6 +43,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "nvs_funcs.h"
@@ -68,7 +69,11 @@
 
 // Keys
 #define LAYER_NUM_KEY "layer_num"
+#define CURRENT_LAYER_KEY "cur_layer"
 #define MACROS_KEY "macros_key"
+
+// Wait this long after the last layer change before writing it, to spare the flash
+#define CURRENT_LAYER_SAVE_DELAY_US (3 * 1000 * 1000)
 
 const static char *TAG = "NVS LAYERS";
 
@@ -76,6 +81,10 @@ dd_layer *key_layouts;
 dd_macros *user_macros;
 uint8_t layers_num = 0;
 int total_macros = 0;
+
+static esp_timer_handle_t current_layer_timer = NULL;
+static volatile uint8_t pending_layer = 0;
+static volatile bool layer_save_pending = false;
 
 /**
  * @brief Check the number of available entries of the NVS
@@ -449,6 +458,7 @@ esp_err_t nvs_delete_layer(uint8_t delete_layer_num)
 	if (current_layout > 0)
 	{
 		current_layout--;
+		nvs_schedule_current_layer_save(current_layout);
 	}
 
 	return ESP_OK;
@@ -880,4 +890,99 @@ esp_err_t nvs_load_rgb_color(rgb_mode_t *led_mode)
 	}
 
 	return ESP_OK;
+}
+/**
+ * @brief Store the active layer so it is restored after a reboot or deep sleep.
+ * Nothing is written if the stored value is already the same.
+ *
+ * @param layer index of the active layer
+ * @return esp_err_t
+ */
+esp_err_t nvs_save_current_layer(uint8_t layer)
+{
+	nvs_handle_t nvs_handle;
+	uint8_t stored_layer;
+
+	esp_err_t error = nvs_open(LAYER_NAMESPACE, NVS_READWRITE, &nvs_handle);
+	if (error != ESP_OK)
+	{
+		ESP_LOGE(TAG, "Error (%s) opening NVS Namespace!: \n", esp_err_to_name(error));
+		return error;
+	}
+
+	if (nvs_get_u8(nvs_handle, CURRENT_LAYER_KEY, &stored_layer) != ESP_OK || stored_layer != layer)
+	{
+		error = nvs_set_u8(nvs_handle, CURRENT_LAYER_KEY, layer);
+		if (error == ESP_OK)
+			error = nvs_commit(nvs_handle);
+		ESP_LOGI(TAG, "Current layer %d saved", layer);
+	}
+
+	nvs_close(nvs_handle);
+	return error;
+}
+
+/**
+ * @brief Read the layer that was active before the last reboot or deep sleep.
+ *
+ * @return uint8_t stored layer index, 0 if none was stored
+ */
+uint8_t nvs_load_current_layer(void)
+{
+	nvs_handle_t nvs_handle;
+	uint8_t layer = 0;
+
+	if (nvs_open(LAYER_NAMESPACE, NVS_READONLY, &nvs_handle) == ESP_OK)
+	{
+		nvs_get_u8(nvs_handle, CURRENT_LAYER_KEY, &layer);
+		nvs_close(nvs_handle);
+	}
+	return layer;
+}
+
+static void current_layer_save_cb(void *arg)
+{
+	layer_save_pending = false;
+	nvs_save_current_layer(pending_layer);
+}
+
+/**
+ * @brief Save the active layer after CURRENT_LAYER_SAVE_DELAY_US without further changes,
+ * so scrolling through layers with a knob writes the flash only once.
+ *
+ * @param layer index of the active layer
+ */
+void nvs_schedule_current_layer_save(uint8_t layer)
+{
+	if (current_layer_timer == NULL)
+	{
+		const esp_timer_create_args_t timer_args = {
+			.callback = &current_layer_save_cb,
+			.name = "layer_save"};
+		if (esp_timer_create(&timer_args, &current_layer_timer) != ESP_OK)
+		{
+			ESP_LOGE(TAG, "Could not create the layer save timer, saving now");
+			nvs_save_current_layer(layer);
+			return;
+		}
+	}
+
+	pending_layer = layer;
+	layer_save_pending = true;
+	esp_timer_stop(current_layer_timer); // fails harmlessly if it was not running
+	esp_timer_start_once(current_layer_timer, CURRENT_LAYER_SAVE_DELAY_US);
+}
+
+/**
+ * @brief Write a scheduled layer save right away. Call before deep sleep or restart.
+ */
+void nvs_flush_current_layer(void)
+{
+	if (layer_save_pending)
+	{
+		if (current_layer_timer != NULL)
+			esp_timer_stop(current_layer_timer);
+		layer_save_pending = false;
+		nvs_save_current_layer(pending_layer);
+	}
 }

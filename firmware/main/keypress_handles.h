@@ -10,6 +10,7 @@
 
 
 
+void set_current_layout(uint8_t layer);
 void layer_adjust(uint16_t keycode);
 void media_control_release(uint16_t keycode);
 void media_control_send(uint16_t keycode);

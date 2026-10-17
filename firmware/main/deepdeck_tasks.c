@@ -323,6 +323,7 @@ void deep_sleep(void *pvParameters)
 			{
 				force_sleep = false;
 				ESP_LOGE(SYSTEM_REPORT_TAG, "going to sleep!");
+				nvs_flush_current_layer(); // a pending layer save would be lost otherwise
 #ifdef OLED_ENABLE
 				vTaskDelay(20 / portTICK_PERIOD_MS);
 				vTaskSuspend(xOledTask);

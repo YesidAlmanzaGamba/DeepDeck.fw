@@ -22,7 +22,7 @@
 #include "nvs_keymaps.h"
 #include "key_definitions.h"
 #include "nvs_funcs.h"
-#include "keymap.h"
+#include "keypress_handles.h"
 // #include "mdns.h"
 #include "esp_vfs.h"
 
@@ -1146,11 +1146,7 @@ esp_err_t update_layer_url_handler(httpd_req_t *req)
 	httpd_resp_set_status(req, HTTPD_200);
 	httpd_resp_send(req, NULL, 0);
 
-	current_layout = 0;
-#ifdef OLED_ENABLE
-	xQueueSend(layer_recieve_q, &current_layout,
-			   (TickType_t)0);
-#endif
+	set_current_layout(0);
 
 #ifdef RGB_LEDS
 	rgb_mode_t led_mode;
@@ -1315,7 +1311,7 @@ esp_err_t create_layer_url_handler(httpd_req_t *req)
 
 	cJSON_Delete(payload);
 	free(buf);
-	current_layout = 0;
+	set_current_layout(0);
 	res = nvs_create_new_layer(new_layer);
 #ifdef RGB_LEDS
 	rgb_mode_t led_mode;
@@ -1394,11 +1390,7 @@ esp_err_t restore_default_layer_url_handler(httpd_req_t *req)
 		httpd_resp_send(req, NULL, 0);
 	}
 
-	current_layout = 0;
-#ifdef OLED_ENABLE
-	xQueueSend(layer_recieve_q, &current_layout,
-			   (TickType_t)0);
-#endif
+	set_current_layout(0);
 
 #ifdef RGB_LEDS
 	rgb_mode_t led_mode;

@@ -105,6 +105,11 @@ esp_err_t nvs_delete_macro(dd_macros macro);
 esp_err_t nvs_restore_default_macros(void);
 
 
+esp_err_t nvs_save_current_layer(uint8_t layer);
+uint8_t nvs_load_current_layer(void);
+void nvs_schedule_current_layer_save(uint8_t layer);
+void nvs_flush_current_layer(void);
+
 esp_err_t nvs_save_led_mode(rgb_mode_t led_mode);
 esp_err_t nvs_load_led_mode(rgb_mode_t *led_mode);
 esp_err_t nvs_load_rgb_color(rgb_mode_t *led_mode);

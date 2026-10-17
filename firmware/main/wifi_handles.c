@@ -386,6 +386,7 @@ void wifiInit(void *params)
 				wifi_reset = false;
 				printf("Restarting now.\n");
 				fflush(stdout);
+				nvs_flush_current_layer();
 				esp_restart();
 			}
 

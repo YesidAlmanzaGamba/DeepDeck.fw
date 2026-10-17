@@ -163,6 +163,14 @@ void app_main()
 	nvs_load_layouts();
 	nvs_load_macros();
 
+	// Restore the layer that was active before the last reboot or deep sleep
+	uint8_t saved_layer = nvs_load_current_layer();
+	if (saved_layer < layers_num && key_layouts[saved_layer].active)
+	{
+		current_layout = saved_layer;
+		ESP_LOGI("MAIN", "restored layer %d", current_layout);
+	}
+
 	// activate keyboard BT stack
 	halBLEInit(1, 1);
 	ESP_LOGI("HIDD", "MAIN finished...");
@@ -193,6 +201,7 @@ void app_main()
 	// activate oled
 #ifdef OLED_ENABLE
 	init_oled(ROTATION);
+	xQueueSend(layer_recieve_q, &current_layout, (TickType_t)0); // show the restored layer
 
 	splashScreen();
 	vTaskDelay(pdMS_TO_TICKS(1000));
