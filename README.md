@@ -8,6 +8,10 @@ repository so changes to the API between them land in a single commit.
 | [`firmware/`](firmware/README.md) | ESP32 firmware (keys, knobs, OLED, LEDs, BLE HID, WiFi + REST API) | ESP-IDF **v4.4** |
 | [`web/`](web/README.md) | Angular configurator served by the DeepDeck from its SPIFFS partition | Node + Angular CLI |
 
+Plans live in [`docs/plans/`](docs/plans/ROADMAP.md), and the history of every change and decision
+in [`docs/traceability/`](docs/traceability/CHANGELOG.md). [`CLAUDE.md`](CLAUDE.md) holds the build
+setup and the project's pitfalls.
+
 ## Building the firmware
 
 ```sh

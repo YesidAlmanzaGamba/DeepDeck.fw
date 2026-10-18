@@ -1,0 +1,2 @@
+# Generated web build packed into the firmware: keep it byte for byte (no CRLF conversion)
+firmware/spiffs_image/** -text
