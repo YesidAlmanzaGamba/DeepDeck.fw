@@ -10,7 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
-| CH-010 | 2026-10-17 | Add CLAUDE.md, docs/plans, docs/traceability | docs | (this commit) | n/a | n/a |
+| CH-010 | 2026-10-17 | Add CLAUDE.md, docs/plans, docs/traceability | docs | 91bfc61 | n/a | n/a |
 | CH-009 | 2026-10-17 | Ship the current web app in the firmware SPIFFS image | both | 60af76f | build, image contents | no |
 | CH-008 | 2026-10-16 | Build from project paths that contain spaces | firmware | 012671a | build in `D:\Personal Yesid\...` | no |
 | CH-007 | 2026-10-16 | Remember the active layer across reboot and deep sleep; fix layer hold | firmware | 13a9f89 | build, symbol check | no |
