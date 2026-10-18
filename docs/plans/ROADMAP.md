@@ -40,7 +40,7 @@ In suggested order. R4.5 (remove the portal) comes first because it frees flash 
 | ID | Item | Status |
 |----|------|--------|
 | R6.1 | Firmware update from the app (over BLE or USB; WiFi download later, D-030) | done |
-| R6.2 | New keymap editor in the app's style: visual 4x4 + knobs, keycode search, drag and drop | proposed |
+| R6.2 | New keymap editor in the app's style: visual 4x4 + knobs, keycode search, drag and drop | done |
 | R6.3 | Per-application layers: the app switches layer by the focused window | proposed |
 | R6.4 | Tray icon and start with Windows; layer status and link-lost notice | proposed |
 | R6.5 | Battery level, sleep timeout and OLED dimming set from the app | proposed |
@@ -54,7 +54,7 @@ In suggested order. R4.5 (remove the portal) comes first because it frees flash 
 |----|------|--------|------|
 | R1.1 | Ship the current web app in the firmware SPIFFS image with one cross-platform command | done | [plan](2026-10-17-web-to-firmware-pipeline.md) |
 | R1.2 | Per-key LED "Color" tab in the web app: implement in firmware or remove | superseded by R5.2 | |
-| R1.3 | Knob macros use the hardcoded `macros[]` table instead of the user's macros | proposed | |
+| R1.3 | Knob macros use the hardcoded `macros[]` table instead of the user's macros | done (CH-025) | |
 | R1.4 | API safety: knob JSON arrays not bounds-checked, WiFi password logged, `Access-Control-Allow-Origin: *` | mostly done in Phase 1 (validation, no password log); CORS goes with the portal (R4.5) | |
 
 ## 2. Code health (no visible change)

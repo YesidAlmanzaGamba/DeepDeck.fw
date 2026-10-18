@@ -305,7 +305,7 @@ uint8_t *check_key_state(dd_layer *keymap)
 						for (uint8_t i = 0; i < MACRO_LEN; i++)
 						{
 							// uint16_t key = macros[keycode - MACRO_BASE_VAL][i];
-							uint16_t key = user_macros[keycode - MACRO_BASE_VAL].key[i];
+							uint16_t key = (keycode - MACRO_BASE_VAL < total_macros) ? user_macros[keycode - MACRO_BASE_VAL].key[i] : KC_NO; // a key may point past the stored macros
 
 							if (key == KC_NO)
 							{
@@ -375,7 +375,7 @@ uint8_t *check_key_state(dd_layer *keymap)
 						for (uint8_t i = 0; i < MACRO_LEN; i++)
 						{
 							// uint16_t key = macros[keycode - MACRO_BASE_VAL][i];
-							uint16_t key = user_macros[keycode - MACRO_BASE_VAL].key[i];
+							uint16_t key = (keycode - MACRO_BASE_VAL < total_macros) ? user_macros[keycode - MACRO_BASE_VAL].key[i] : KC_NO; // a key may point past the stored macros
 
 							// ESP_LOGI("releaseMacro", "keycode: %d", keycode - MACRO_BASE_VAL);
 							current_report[i + 2] = 0; // 2 is an offset, as 0 and 1 are used for other reasons

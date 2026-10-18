@@ -26,10 +26,6 @@ export const SITE_ROUTES: Routes = [
           import('./modules/device/device.module').then(m => m.DeviceModule)
       },
       {
-        path: 'keymap', canActivate: [ConnectedGuard], loadChildren: () =>
-          import('./modules/keymap/keymap.module').then(m => m.KeymapModule)
-      },
-      {
         path: 'macros', canActivate: [ConnectedGuard], loadChildren: () =>
           import('./modules/macros/macros.module').then(m => m.MacrosModule)
       },

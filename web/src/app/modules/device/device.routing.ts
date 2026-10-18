@@ -7,6 +7,7 @@ import { WifiComponent } from './pages/wifi.component';
 import { ManageComponent } from './pages/manage.component';
 import { LogComponent } from './pages/log.component';
 import { UpdateComponent } from './pages/update.component';
+import { KeymapEditorComponent } from './pages/keymap-editor.component';
 import { ConnectedGuard } from '../../core/guards/connected.guard';
 
 export const routes: Routes = [
@@ -17,6 +18,7 @@ export const routes: Routes = [
   { path: 'device', component: ManageComponent, canActivate: [ConnectedGuard] },
   { path: 'log', component: LogComponent },
   { path: 'update', component: UpdateComponent, canActivate: [ConnectedGuard] },
+  { path: 'keymap', component: KeymapEditorComponent, canActivate: [ConnectedGuard] },
 ];
 
 @NgModule({

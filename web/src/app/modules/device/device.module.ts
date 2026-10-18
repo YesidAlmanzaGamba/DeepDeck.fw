@@ -9,11 +9,12 @@ import { WifiComponent } from './pages/wifi.component';
 import { ManageComponent } from './pages/manage.component';
 import { LogComponent } from './pages/log.component';
 import { UpdateComponent } from './pages/update.component';
+import { KeymapEditorComponent } from './pages/keymap-editor.component';
 import { ColorPickerModule } from 'ngx-color-picker';
 
-/** Command Center pages: connect, dashboard, lighting, wifi, device, update, log */
+/** Command Center pages: connect, dashboard, keymap, lighting, wifi, device, update, log */
 @NgModule({
   imports: [CommonModule, SharedModule, DeviceRoutingModule, ColorPickerModule],
-  declarations: [ConnectComponent, DashboardComponent, LightingComponent, WifiComponent, ManageComponent, LogComponent, UpdateComponent],
+  declarations: [ConnectComponent, DashboardComponent, LightingComponent, WifiComponent, ManageComponent, LogComponent, UpdateComponent, KeymapEditorComponent],
 })
 export class DeviceModule {}

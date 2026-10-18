@@ -25,6 +25,7 @@
 #include "keyboard_config.h"
 #include "hal_ble.h"
 #include "keypress_handles.h"
+#include "nvs_keymaps.h"
 
 static const char *TAG = "rotary_encoder";
 
@@ -383,10 +384,11 @@ void encoder_command(uint8_t command, uint16_t encoder_commands[ENCODER_SIZE]){
         else if(action >= MACRO_BASE_VAL && action < MACRO_HOLD_MAX_VAL)
         {
             ESP_LOGI("Encoder","Macro detected %d", action);
+            // the user's macros, as the keys use (it was the built-in table, R1.3); callers hold layouts_lock
 
             for (uint8_t i = 0; i < MACRO_LEN; i++) 
             {
-                uint16_t key = macros[action - MACRO_BASE_VAL][i];
+                uint16_t key = (action - MACRO_BASE_VAL < total_macros) ? user_macros[action - MACRO_BASE_VAL].key[i] : KC_NO;
                 if (key == KC_NO)
                 {
                     break;
@@ -399,7 +401,7 @@ void encoder_command(uint8_t command, uint16_t encoder_commands[ENCODER_SIZE]){
             key_state[0] = modifier;
             xQueueSend(keyboard_q,(void*)&key_state, (TickType_t) 0);
             for (uint8_t i = 0; i < MACRO_LEN; i++) {
-                uint16_t key = macros[action - MACRO_BASE_VAL][i];
+                uint16_t key = (action - MACRO_BASE_VAL < total_macros) ? user_macros[action - MACRO_BASE_VAL].key[i] : KC_NO;
                 if (key == KC_NO)
                 {
                     break;

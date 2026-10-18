@@ -1,0 +1,96 @@
+<div class="dd-page wide">
+  <h2>Keymap</h2>
+  <div class="dd-error" *ngIf="error">{{ error }}</div>
+  <div class="dd-ok" *ngIf="message">{{ message }}</div>
+
+  <div class="dd-row layer-bar">
+    <div class="layer-list grow">
+      <button class="layer-chip small" *ngFor="let l of layers" (click)="open(l.uuid)"
+        [class.active]="l.uuid === uuid" [class.disabled]="!l.active">
+        {{ l.name }}<span class="muted" *ngIf="l.uuid === activeUuid"> · on device</span>
+      </button>
+      <button class="btn-s" (click)="create()" [disabled]="busy">+ New layer</button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="layer">
+    <div class="dd-card">
+      <div class="dd-row">
+        <input class="dd-input name" [(ngModel)]="layer.name" maxlength="14" placeholder="Layer name">
+        <mat-slide-toggle [(ngModel)]="layer.active">In the layer rotation</mat-slide-toggle>
+        <span class="grow"></span>
+        <span class="muted" *ngIf="dirty">Not saved</span>
+        <button class="btn-s" (click)="revert()" [disabled]="!dirty || busy">Revert</button>
+        <button class="btn-p" (click)="save()" [disabled]="!dirty || busy">Save</button>
+      </div>
+
+      <div class="editor">
+        <!-- the DeepDeck: knobs on top, 4x4 keys -->
+        <div class="deck">
+          <div class="knobs">
+            <div class="knob" *ngFor="let side of ['left', 'right']">
+              <div class="knob-title">{{ side === 'left' ? 'Left' : 'Right' }} knob</div>
+              <button class="knob-slot" *ngFor="let a of knobActions"
+                [class.selected]="isSelected(knobSlot(side, a.id))"
+                [class.over]="dragOver === side + '-' + a.id"
+                (click)="selected = knobSlot(side, a.id)"
+                (dragover)="$event.preventDefault(); dragOver = side + '-' + a.id" (dragleave)="dragOver = null"
+                (drop)="drop($event, knobSlot(side, a.id))">
+                <span class="what">{{ a.label }}</span>
+                <span class="k-code">{{ short(knob(side)[a.id]) }}</span>
+              </button>
+            </div>
+          </div>
+          <div class="keys">
+            <button class="key" *ngFor="let i of keyIndexes"
+              [class.selected]="isSelected(keySlot(i))" [class.over]="dragOver === 'k' + i"
+              [class.empty]="!key(i).key_code"
+              (click)="selected = keySlot(i)"
+              (dragover)="$event.preventDefault(); dragOver = 'k' + i" (dragleave)="dragOver = null"
+              (drop)="drop($event, keySlot(i))">
+              <span class="k-label">{{ key(i).name || '·' }}</span>
+              <span class="k-desc">{{ key(i).key_code ? describe(key(i).key_code) : 'nothing' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- what the selected slot does, and the key list -->
+        <div class="picker">
+          <div class="slot-info">
+            <div class="title">{{ slotTitle() }}</div>
+            <div class="dd-row" *ngIf="selectedKey() as k">
+              <label class="muted">Label on the screen</label>
+              <input class="dd-input label-input" [(ngModel)]="k.name" maxlength="6">
+            </div>
+            <div class="dd-row">
+              <span class="grow">Does: <strong>{{ describe(selectedCode()) }}</strong></span>
+              <button class="btn-s small" (click)="clearSlot()">Clear</button>
+            </div>
+          </div>
+
+          <input class="dd-input search" [(ngModel)]="search" placeholder="Search keys: “vol”, “F5”, “enter”…">
+          <div class="groups">
+            <button *ngFor="let g of groups" class="group" [class.on]="group === g" (click)="group = g">{{ g }}</button>
+          </div>
+          <div class="actions">
+            <button class="action" *ngFor="let a of filtered()" draggable="true" (dragstart)="dragStart($event, a)"
+              (click)="assign(a)" [class.current]="a.code === selectedCode()" [title]="a.name">
+              <span class="k-label">{{ a.label }}</span>
+              <span class="k-desc">{{ a.name !== a.label ? a.name : a.group }}</span>
+            </button>
+            <p class="muted" *ngIf="filtered().length === 0">Nothing matches.</p>
+          </div>
+          <p class="muted">Click a slot on the left, then a key here; or drag a key onto a slot.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="dd-row">
+      <button class="btn-s" (click)="showOnDevice()" [disabled]="busy">Show this layer on the DeepDeck</button>
+      <button class="btn-s" (click)="duplicate()" [disabled]="busy || dirty">Duplicate</button>
+      <button class="btn-s danger" (click)="remove()" [disabled]="busy || layers.length <= 1">Delete layer</button>
+      <span class="grow"></span>
+      <button class="btn-s danger" (click)="restoreDefaults()" [disabled]="busy">Restore default layers</button>
+    </div>
+  </ng-container>
+</div>

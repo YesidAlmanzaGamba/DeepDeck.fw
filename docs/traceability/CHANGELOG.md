@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-025 | 2026-10-18 | New keymap editor (4x4 keys + 2 knobs, key search, drag and drop); knob macros use the user's macros (R1.3); macro index bounds-checked | web, firmware | (branch `phase4`) | edit by click and by drag, knob action, save over BLE, read back over USB, layer restored identical | yes (automated) |
 | CH-024 | 2026-10-18 | Firmware update from the app: `fw.*`, rollback, Update page, `cc_cli update`; BLE writes capped at 512 bytes and serialised; UART ISR in IRAM; BLE Data Length Extension | firmware, app, tools | (branch `phase4`) | updates over USB and BLE, corrupt / foreign images refused, crashing image rolled back, update from the app's page | yes (automated) |
 | CH-023 | 2026-10-18 | Remove the WiFi portal: web server, SPIFFS image, setup network; WiFi station joins without restart, `wifi.forget`; shared BLE access in the app; I2C mutex created before BLE; fw 0.7.0 | firmware, web, app | (see branch `phase4`) | build, flashed, selftest 0 failures over USB+BLE, heap 64 KB (was 38), app + cc_cli on BLE together | yes (automated); `wifi.set`/`forget`: owner |
 | CH-022 | 2026-10-18 | README rewritten for the reworked project and the app; suggested roadmap R6; `main` fast-forwarded to `command-center` and pushed | docs | (this commit) | links checked | n/a |
@@ -36,6 +37,27 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-025: New keymap editor (R6.2) and knob macros (R1.3)
+- **Why:** the old Keymap screens (a table, then a form per layer with tabs) came from the web
+  portal; the owner asked for an editor in the app's style.
+- **What:**
+  - `keymap-editor.component`: layer chips (+ new, the one on the device marked), name, "in the
+    layer rotation", the 2 knobs (turn left/right, press, double, long) and the 4x4 keys as on the
+    device; the selected slot's action and screen label; a searchable key list in groups
+    (letters, numbers, editing, symbols, navigation, F1–F24, numpad, modifiers, media, layers,
+    macros by name). Click a slot then a key, or drag a key onto a slot. Save / Revert,
+    duplicate, delete, show on the DeepDeck, restore defaults.
+  - `key-catalog.ts`: the codes the firmware handles (media: only the 7 it sends).
+  - The old `modules/keymap` (and its non-working Color tab) is removed.
+  - `tauri.conf.json`: `dragDropEnabled: false`, otherwise WebView2 swallows HTML5 drag and drop.
+  - Firmware: knob actions that are macros used the built-in `macros[]` table instead of the
+    user's macros; keys and knobs now both use `user_macros`, and check the index against
+    `total_macros` (a key pointing past the stored macros read beyond the array).
+- **Verified:** in the app over BLE: key 16 set by search and click (F5), key 15 by drag and drop
+  (F6), left knob turn-left (Mute), saved; read back over USB; the layer then restored from a
+  backup and compared identical. Selftest 0 failures.
+- **Owner to check:** a macro on a knob now runs your macro.
 
 ### CH-024: Firmware update from the app (R6.1)
 - **Why:** updating needed ESP-IDF, esptool and the cable.
