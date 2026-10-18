@@ -42,7 +42,7 @@ In suggested order. R4.5 (remove the portal) comes first because it frees flash 
 | R6.1 | Firmware update from the app (over BLE or USB; WiFi download later, D-030) | done |
 | R6.2 | New keymap editor in the app's style: visual 4x4 + knobs, keycode search, drag and drop | done |
 | R6.3 | Per-application layers: the app switches layer by the focused window | done (Windows) |
-| R6.4 | Tray icon and start with Windows; layer status and link-lost notice | proposed |
+| R6.4 | Tray icon and start with Windows; layer status and link-lost notice | done |
 | R6.5 | Battery level, sleep timeout and OLED dimming set from the app | proposed |
 | R6.6 | CI: build firmware, web and installer on every push, releases with the installer (with R4.4) | proposed |
 | R6.7 | Tap-dance and mod-tap (upstream WIP); macros with delays and typed text | proposed |

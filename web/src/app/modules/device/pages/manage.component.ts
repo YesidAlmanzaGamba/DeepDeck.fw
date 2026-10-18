@@ -13,13 +13,32 @@ const BACKUP_VERSION = 1;
 export class ManageComponent implements OnInit {
   info: any = null;
   name = '';
+  desktop: { close_to_tray: boolean; notify_link_lost: boolean; autostart: boolean } | null = null;
   busy = '';
   message = '';
   error = '';
 
   constructor(public device: DeviceService) {}
 
+  async loadDesktop() {
+    if (this.device.isApp) {
+      this.desktop = await (window as any).__TAURI__.core.invoke('desktop_get');
+    }
+  }
+
+  async saveDesktop() {
+    try {
+      await (window as any).__TAURI__.core.invoke('desktop_set', { value: this.desktop });
+      this.message = 'Saved';
+      this.error = '';
+    } catch (err) {
+      this.error = String(err);
+      this.loadDesktop();
+    }
+  }
+
   ngOnInit(): void {
+    this.loadDesktop();
     this.device.call('device.info').subscribe({
       next: (info) => {
         this.info = info;

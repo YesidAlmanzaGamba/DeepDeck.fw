@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-027 | 2026-10-18 | Tray icon (link and layer), close to tray, start with Windows (hidden), single instance, notification when the link is lost | app | (branch `phase4`) | autostart registry on/off, close hides, second start shows the window, `--hidden`, reconnect after a device restart | partly (owner: tray and notification by eye) |
 | CH-026 | 2026-10-18 | Layers by application: the app switches the DeepDeck's layer when another program comes to the front | app | (branch `phase4`) | fallback and a matching rule switched the layer on the device | yes (automated) |
 | CH-025 | 2026-10-18 | New keymap editor (4x4 keys + 2 knobs, key search, drag and drop); knob macros use the user's macros (R1.3); macro index bounds-checked | web, firmware | (branch `phase4`) | edit by click and by drag, knob action, save over BLE, read back over USB, layer restored identical | yes (automated) |
 | CH-024 | 2026-10-18 | Firmware update from the app: `fw.*`, rollback, Update page, `cc_cli update`; BLE writes capped at 512 bytes and serialised; UART ISR in IRAM; BLE Data Length Extension | firmware, app, tools | (branch `phase4`) | updates over USB and BLE, corrupt / foreign images refused, crashing image rolled back, update from the app's page | yes (automated) |
@@ -38,6 +39,26 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-027: Tray, start with Windows, link-lost notice (R6.4)
+- **What (`src-tauri/src/desktop.rs`):**
+  - Tray icon: the tooltip shows the link and the active layer (from `layer.changed` events and
+    `device.info` answers). Left click opens the window; the menu has Open and Quit.
+  - Closing the window hides it to the tray (setting, on by default), so layers by application
+    keep working. Quit from the tray menu.
+  - Start with Windows: `HKCU\...\CurrentVersion\Run` value "DeepDeck Command Center" with
+    `--hidden`. The window starts hidden in that case (`visible: false` in tauri.conf, shown at
+    setup otherwise).
+  - Single instance (`tauri-plugin-single-instance`): starting the app again shows the running one.
+  - Notification (`tauri-plugin-notification`) when an established link is lost, but not after the
+    user's own Disconnect.
+  - Settings in `<app config dir>/desktop.json`; Device page, card "This computer".
+- **Verified:** defaults read; autostart on writes the Run value with `--hidden`, off removes it;
+  WM_CLOSE hides the window and the process stays; a second start exits and shows the first
+  window; `--hidden` starts without a window; restarting the DeepDeck while connected over BLE:
+  the link drops and comes back by itself.
+- **Owner to check:** the tray icon and tooltip, and the Windows notification when the DeepDeck
+  is switched off (a development build may show it under another app name).
 
 ### CH-026: Layers by application (R6.3)
 - **What:**

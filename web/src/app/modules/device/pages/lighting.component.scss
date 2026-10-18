@@ -68,3 +68,5 @@ select { background: #1f1f22; color: #ddd; border: 1px solid #4a4a50; border-rad
 .chip { background: #2e2e33; border: 1px solid #45454b; border-radius: 12px; padding: 3px 10px; color: #ddd;
   cursor: pointer; font-family: Consolas, monospace; font-size: 12px; &:hover { border-color: #dc9f10; } }
 .small { padding: 2px 8px; font-size: 12px; }
+
+.toggles { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }

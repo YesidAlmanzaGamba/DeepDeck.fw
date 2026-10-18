@@ -6,6 +6,7 @@
 #[cfg(windows)]
 mod ble_win;
 mod app_layers;
+mod desktop;
 mod firmware;
 mod link;
 mod selftest;
@@ -97,9 +98,37 @@ fn app_layers_set(app: AppHandle, rules: State<'_, app_layers::SharedAppLayers>,
     rules.set(&app, value)
 }
 
+#[tauri::command]
+fn desktop_get(app: AppHandle) -> desktop::DesktopState {
+    desktop::state(&app)
+}
+
+#[tauri::command]
+fn desktop_set(app: AppHandle, value: desktop::DesktopState) -> Result<(), String> {
+    desktop::set_state(&app, value)
+}
+
 fn main() {
     tauri::Builder::default()
+        // a second start (Start menu, autostart) shows the running app instead
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| desktop::show_window(app)))
+        .plugin(tauri_plugin_notification::init())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let keep = window.app_handle().state::<desktop::Desktop>().settings.lock().unwrap().close_to_tray;
+                if keep {
+                    api.prevent_close(); // stays in the tray (per-application layers keep working)
+                    let _ = window.hide();
+                }
+            }
+        })
         .setup(|app| {
+            app.manage(desktop::Desktop::new(desktop::load_settings(app.handle())));
+            desktop::setup(app.handle())?;
+            // the window starts hidden (tauri.conf); show it unless started by the autostart entry
+            if !std::env::args().any(|a| a == desktop::HIDDEN_FLAG) {
+                desktop::show_window(app.handle());
+            }
             let links: SharedLinks = Arc::new(Links::default());
             links.start_reconnect_loop(app.handle().clone());
             let app_rules = app_layers::AppLayers::load(app.handle());
@@ -121,7 +150,9 @@ fn main() {
             open_text_file,
             open_firmware_file,
             app_layers_get,
-            app_layers_set
+            app_layers_set,
+            desktop_get,
+            desktop_set
         ])
         .run(tauri::generate_context!())
         .expect("error while running the DeepDeck Command Center");

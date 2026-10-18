@@ -29,5 +29,18 @@
     </div>
   </div>
 
+  <div class="dd-card" *ngIf="desktop">
+    <h3>This computer</h3>
+    <div class="toggles">
+      <mat-slide-toggle [(ngModel)]="desktop.autostart" (ngModelChange)="saveDesktop()">
+        Start the Command Center with Windows (in the tray)</mat-slide-toggle>
+      <mat-slide-toggle [(ngModel)]="desktop.close_to_tray" (ngModelChange)="saveDesktop()">
+        Closing the window keeps it running in the tray (needed for layers by application)</mat-slide-toggle>
+      <mat-slide-toggle [(ngModel)]="desktop.notify_link_lost" (ngModelChange)="saveDesktop()">
+        Notify me when the DeepDeck disconnects</mat-slide-toggle>
+    </div>
+    <p class="muted">The tray icon shows the connection and the active layer. Quit from its menu.</p>
+  </div>
+
   <p class="muted" *ngIf="!device.isApp">Backup, restore and restart need the DeepDeck Command Center app.</p>
 </div>
