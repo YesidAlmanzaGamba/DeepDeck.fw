@@ -29,7 +29,22 @@ Plan: [2026-10-18-app-lighting-oled](2026-10-18-app-lighting-oled.md)
 | ID | Item | Status |
 |----|------|--------|
 | R5.1 | OLED: layer name and status in the yellow band, 4x4 key grid; Device info pages in the settings menu | done; owner to check on the device |
-| R5.2 | Lighting v2: 11 effects, per-layer key colours, live preview from the app (replaces R1.2) | done; owner to check the effects |
+| R5.2 | Lighting v2: 11 effects, per-layer key colours, live preview from the app (replaces R1.2) | done; tested by the owner (2026-10-18) |
+
+## 6. Suggested next (proposed by Claude on 2026-10-18, not yet chosen)
+
+In suggested order. R4.5 (remove the portal) comes first because it frees flash and RAM for R6.1.
+
+| ID | Item | Status |
+|----|------|--------|
+| R6.1 | Firmware update from the app (OTA over WiFi or USB); needs two app partitions, so after R4.5 | proposed |
+| R6.2 | New keymap editor in the app's style: visual 4x4 + knobs, keycode search, drag and drop | proposed |
+| R6.3 | Per-application layers: the app switches layer by the focused window | proposed |
+| R6.4 | Tray icon and start with Windows; layer status and link-lost notice | proposed |
+| R6.5 | Battery level, sleep timeout and OLED dimming set from the app | proposed |
+| R6.6 | CI: build firmware, web and installer on every push, releases with the installer (with R4.4) | proposed |
+| R6.7 | Tap-dance and mod-tap (upstream WIP); macros with delays and typed text | proposed |
+| R6.8 | Share layers: export/import single layers from the backup format | proposed |
 
 ## 1. Finish what is half-done
 

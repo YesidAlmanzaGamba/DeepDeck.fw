@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-022 | 2026-10-18 | README rewritten for the reworked project and the app; suggested roadmap R6; `main` fast-forwarded to `command-center` and pushed | docs | (this commit) | links checked | n/a |
 | CH-021 | 2026-10-18 | Command Center: Lighting (effects, live preview, per-layer key painter), WiFi, Device (backup/restore), Log pages | web | 3f93b42 | `ng build`, every page loaded with real data over BLE in the built app | yes (app, automated) |
 | CH-020 | 2026-10-18 | Command Center app shell: Tauri, BLE/USB link manager, DeviceService, Connect and Dashboard | web, app | c06b36e, 0848184 | `cargo build`, app self-test over BLE (0 failures) | yes (automated) |
 | CH-019 | 2026-10-18 | Lighting v2: 11 effects, brightness, two colours, press highlight, per-layer key colours, live preview; protocol `led.*` | firmware, tools | 1824fd6 | build, flashed, selftest 0 failures over USB+BLE, heap flat over 30 `led.keys.set` | yes (automated); effects by eye: owner |
