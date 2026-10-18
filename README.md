@@ -59,8 +59,8 @@ every product decision is in the [decision log](docs/traceability/DECISIONS.md).
 | Update | Install a new firmware over Bluetooth or USB, with automatic rollback if it fails to start |
 | Log | The firmware's log (over USB) |
 
-**Install.** Build the installer (see below). It ends up at
-`web/src-tauri/target/release/bundle/nsis/DeepDeck Command Center_<version>_x64-setup.exe`.
+**Install:** follow the **[installation manual](docs/INSTALL.md)** (Windows, macOS, Linux). The
+installers come from the releases or from every CI run, and each one contains the newest firmware.
 
 **First connection:**
 - Bluetooth: pair the DeepDeck in the computer's Bluetooth settings, as for a keyboard, then pick it

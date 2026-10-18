@@ -1,5 +1,5 @@
-# Builds the firmware and the Command Center on every push and pull request (R6.6).
-# A tag "v*" also publishes a GitHub release with the installer and the firmware image.
+# Builds the firmware and the Command Center installers (Windows, macOS, Linux) on every push and
+# pull request (R6.6). A tag "v*" also creates a draft GitHub release with everything attached.
 name: build
 
 on:
@@ -24,26 +24,58 @@ jobs:
         run: |
           . $IDF_PATH/export.sh
           idf.py -C firmware build
+      # the same layout as firmware/build, so `esptool.py ... write_flash @flash_args` works in it
       - name: Collect the images
         shell: bash
         run: |
-          mkdir -p out/firmware
+          mkdir -p out/firmware/bootloader out/firmware/partition_table
           cd firmware/build
-          cp DeepDeck.bin bootloader/bootloader.bin partition_table/partition-table.bin ota_data_initial.bin flash_args ../../out/firmware/
-          ls -l ../../out/firmware
+          cp DeepDeck.bin ota_data_initial.bin flash_args ../../out/firmware/
+          cp bootloader/bootloader.bin ../../out/firmware/bootloader/
+          cp partition_table/partition-table.bin ../../out/firmware/partition_table/
+          find ../../out/firmware -type f
       - uses: actions/upload-artifact@v4
         with:
           name: firmware
           path: out/firmware
 
-  app-windows:
-    name: Command Center (Windows installer)
-    runs-on: windows-latest
+  app:
+    name: Command Center (${{ matrix.name }})
+    needs: firmware
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            bundles: nsis
+            artifact: web/src-tauri/target/release/bundle/nsis/*.exe
+          - name: macOS
+            os: macos-latest
+            bundles: dmg
+            artifact: web/src-tauri/target/release/bundle/dmg/*.dmg
+          - name: Linux
+            os: ubuntu-22.04
+            bundles: deb,appimage
+            artifact: |
+              web/src-tauri/target/release/bundle/deb/*.deb
+              web/src-tauri/target/release/bundle/appimage/*.AppImage
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: web
     steps:
       - uses: actions/checkout@v4
+      # the installer carries the firmware built above (scripts/copy-firmware.js picks it up)
+      - uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          path: firmware/build
+      - name: Linux libraries for Tauri
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libudev-dev libdbus-1-dev libfuse2 patchelf
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -54,43 +86,17 @@ jobs:
         with:
           workspaces: web/src-tauri
       - run: npm ci --no-audit --no-fund
-      # the Tauri CLI is pinned here, not in package.json (D-026); it runs `npm run build-prod` first
-      - run: npx --yes @tauri-apps/cli@2.12.3 build
+      # the Tauri CLI is pinned here, not in package.json (D-026); it runs build-prod and copy-firmware first
+      - run: npx --yes @tauri-apps/cli@2.12.3 build --bundles ${{ matrix.bundles }}
       - uses: actions/upload-artifact@v4
         with:
-          name: command-center-windows
-          path: web/src-tauri/target/release/bundle/nsis/*.exe
-
-  app-check:
-    name: Command Center (compiles on ${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Linux libraries for Tauri
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libudev-dev libdbus-1-dev
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: web/src-tauri
-      # the UI is not needed to compile the Rust side; an empty dist satisfies tauri's build script
-      - name: cargo check
-        working-directory: web/src-tauri
-        run: |
-          mkdir -p ../dist/esp-frontend
-          echo '<!doctype html>' > ../dist/esp-frontend/index.html
-          cargo check --locked
+          name: command-center-${{ matrix.name }}
+          path: ${{ matrix.artifact }}
 
   release:
     name: Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [firmware, app-windows]
+    needs: [firmware, app]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -98,16 +104,16 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-      - name: Firmware archive
+      - name: Firmware files
         run: |
           cd artifacts/firmware
-          zip ../DeepDeck-firmware-${GITHUB_REF_NAME}.zip *
+          zip -r ../DeepDeck-firmware-${GITHUB_REF_NAME}.zip .
           cp DeepDeck.bin ../DeepDeck-${GITHUB_REF_NAME}.bin
       - uses: softprops/action-gh-release@v2
         with:
           draft: true
           generate_release_notes: true
           files: |
-            artifacts/command-center-windows/*.exe
+            artifacts/command-center-*/**/*
             artifacts/DeepDeck-*.bin
             artifacts/DeepDeck-firmware-*.zip

@@ -121,6 +121,30 @@ fn desktop_set(app: AppHandle, value: desktop::DesktopState) -> Result<(), Strin
     desktop::set_state(&app, value)
 }
 
+/// The firmware images the Update page can install without browsing (bundled + history)
+#[tauri::command]
+fn firmware_list(app: AppHandle) -> Vec<firmware::FirmwareEntry> {
+    firmware::list(&app)
+}
+
+/// Read one image of the list for installing (checked like a picked file)
+#[tauri::command]
+async fn firmware_load(path: String) -> Result<firmware::FirmwareFile, String> {
+    tauri::async_runtime::spawn_blocking(move || firmware::read(std::path::Path::new(&path)))
+        .await
+        .map_err(|err| err.to_string())?
+}
+
+#[tauri::command]
+fn firmware_remember(app: AppHandle, path: String) -> Result<(), String> {
+    firmware::remember(&app, &path)
+}
+
+#[tauri::command]
+fn firmware_forget(app: AppHandle, path: String) -> Result<(), String> {
+    firmware::forget(&app, &path)
+}
+
 fn main() {
     tauri::Builder::default()
         // a second start (Start menu, autostart) shows the running app instead
@@ -165,7 +189,11 @@ fn main() {
             app_layers_get,
             app_layers_set,
             desktop_get,
-            desktop_set
+            desktop_set,
+            firmware_list,
+            firmware_load,
+            firmware_remember,
+            firmware_forget
         ])
         .run(tauri::generate_context!())
         .expect("error while running the DeepDeck Command Center");

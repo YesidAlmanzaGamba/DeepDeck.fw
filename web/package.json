@@ -9,6 +9,7 @@
     "lint": "ng lint",
     "e2e": "ng e2e",
     "build-prod": "ng build --configuration production --output-hashing none",
+    "copy-firmware": "node scripts/copy-firmware.js",
     "bundle-analyze": "ng build --prod --stats-json --output-hashing none && webpack-bundle-analyzer dist/esp-frontend/stats.json",
     "serve-artifactsgit": "lite-server --baseDir=\"dist/esp-frontend\""
   },

@@ -7,7 +7,7 @@
     "frontendDist": "../dist/esp-frontend",
     "devUrl": "http://localhost:4200",
     "beforeDevCommand": "npm run start",
-    "beforeBuildCommand": "npm run build-prod"
+    "beforeBuildCommand": "npm run build-prod && node scripts/copy-firmware.js"
   },
   "app": {
     "withGlobalTauri": true,
@@ -17,6 +17,7 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "resources": ["firmware/*"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
   }
 }

@@ -10,6 +10,8 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-034 | 2026-10-18 | Firmware in the app (bundled + history of installed images) on the Update page; installers for Windows, macOS and Linux in CI; installation manual | app, CI, docs | (branch `phase4`) | install from the list over USB (history copy kept); workflow parsed; first CI run green | yes (automated) |
+| CH-033 | 2026-10-18 | App layout fills the window (flex shell, collapsing menu, fluid pages) and opens maximized | app | 6ee264c | screenshots at 1920x1040 and 1000x680 | n/a |
 | CH-032 | 2026-10-18 | Share a single layer: export to a file with the macros, sequences and tap-dances it uses, import with new slots and rewritten codes; `macros.create` reuses emptied slots | app, firmware | (branch `phase4`) | export + import through the app, every part compared on the device, test data removed | yes (automated) |
 | CH-031 | 2026-10-18 | Mod-tap, tap-dance (16) and sequences (32: text, key chords, pauses) in firmware, protocol and app | firmware, app | (branch `phase4`) | selftest 0 failures; protocol round trips; the DeepDeck typed a sequence into a test window; UI writes checked on the device | partly (owner: mod-tap and tap-dance on the keys) |
 | CH-030 | 2026-10-18 | Bluetooth for the app on macOS and Linux (btleplug backend, same API as the WinRT one) | app | (branch `phase4`) | type-checked against btleplug; Windows BLE and USB self-tests unchanged | no (no Mac or Linux here) |
@@ -44,6 +46,32 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-034: Firmware in the app, installers for every OS, manual
+- **Why:** the owner wants to install firmware without browsing for files, keeping earlier ones,
+  and to use the app on macOS and Linux too, with an installation manual.
+- **What:**
+  - `scripts/copy-firmware.js` (run before `tauri build`) puts `firmware/build/DeepDeck.bin` into
+    the app (`src-tauri/firmware/`, resource `firmware/*`).
+  - `firmware.rs`: `firmware_list` (bundled + history, newest first, one entry per SHA-256),
+    `firmware_load`, `firmware_remember` (after a successful update; up to 10 kept in
+    `<app data>/firmware`), `firmware_forget`.
+  - Update page: "Ready to install" with version, build date, newer/older, Install and Remove.
+  - CI: one `app` job per OS (NSIS `.exe`, `.dmg`, `.deb` + `.AppImage`), each carrying the
+    firmware built in the same run; the release zip keeps the `flash_args` layout for esptool.
+  - `Info.plist`: the Bluetooth usage text macOS requires.
+  - `docs/INSTALL.md`: download, install per OS (SmartScreen, Gatekeeper, dialout group),
+    first connection, firmware updates, first flash of an old DeepDeck, tray, uninstall.
+- **Verified:** the bundled 0.7.0 image listed and installed from the list over USB (7.5 KB/s, done,
+  runs from app1), copied to the history. The first CI run on GitHub (previous workflow) passed:
+  firmware, Windows installer, Rust check on macOS and Linux. The new installer jobs run on the
+  next push.
+
+### CH-033: The app fills the window
+- Flex shell (52 px header with the link status, menu, page; only the page scrolls) instead of a
+  95 px toolbar over a 100vh sidenav container (double scrollbar) with a fixed 201 px margin; the
+  menu collapses to icons below 1100 px; pages fluid up to 1500 px (keymap 1700 px); the window
+  opens maximized.
 
 ### CH-032: Share single layers (R6.8)
 - **What:**

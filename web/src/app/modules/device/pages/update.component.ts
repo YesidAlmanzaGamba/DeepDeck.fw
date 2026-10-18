@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { DeviceService, FirmwareFile } from 'src/app/core/services/device/device.service';
+import { DeviceService, FirmwareEntry, FirmwareFile } from 'src/app/core/services/device/device.service';
 
 /** Compare "0.7.0" style versions: <0 if a is older than b */
 function compareVersions(a: string, b: string): number {
@@ -24,6 +24,7 @@ function compareVersions(a: string, b: string): number {
 })
 export class UpdateComponent implements OnInit, OnDestroy {
   info: any = null;
+  library: FirmwareEntry[] = [];
   file: FirmwareFile | null = null;
   state: 'idle' | 'sending' | 'checking' | 'restarting' | 'done' = 'idle';
   progress = 0;
@@ -36,6 +37,7 @@ export class UpdateComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadInfo();
+    this.loadLibrary();
 
   }
 
@@ -43,6 +45,43 @@ export class UpdateComponent implements OnInit, OnDestroy {
     if (this.state === 'sending') {
       this.cancelled = true;
     }
+  }
+
+  async loadLibrary() {
+    if (this.device.isApp) {
+      this.library = await this.device.firmwareList().catch(() => []);
+    }
+  }
+
+  compare(version: string): string {
+    if (!this.info) {
+      return '';
+    }
+    const c = compareVersions(version, this.info.version);
+    return c > 0 ? 'newer' : c === 0 ? 'installed version' : 'older';
+  }
+
+  /** Install straight from the list (bundled or history) */
+  async pick(entry: FirmwareEntry) {
+    this.error = '';
+    this.message = '';
+    try {
+      this.file = await this.device.firmwareLoad(entry.path);
+      await this.start();
+    } catch (err) {
+      this.error = String((err as any)?.message || err);
+    }
+  }
+
+  async forget(entry: FirmwareEntry) {
+    await this.device.firmwareForget(entry.path).catch((err) => (this.error = String(err)));
+    this.loadLibrary();
+  }
+
+  addedText(entry: FirmwareEntry): string {
+    return entry.source === 'bundled'
+      ? 'included with this app'
+      : `installed ${entry.added ? new Date(entry.added * 1000).toLocaleDateString() : 'before'}`;
   }
 
   loadInfo() {
@@ -147,6 +186,10 @@ export class UpdateComponent implements OnInit, OnDestroy {
         const info = await this.call('fw.info');
         this.info = info;
         this.state = 'done';
+        if (info.running !== before && this.file) {
+          // keep it in the history so it can be installed again without browsing
+          this.device.firmwareRemember(this.file.path).then(() => this.loadLibrary(), () => {});
+        }
         this.message =
           info.running !== before
             ? `Done: the DeepDeck runs firmware ${info.version} from ${info.running}.`

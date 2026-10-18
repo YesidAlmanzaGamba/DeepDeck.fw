@@ -10,9 +10,23 @@
     <div class="kv"><span>Slot</span><span>{{ info.running }}{{ info.other_version ? ' (other slot: ' + info.other_version + ')' : '' }}</span></div>
   </div>
 
+  <div class="dd-card" *ngIf="device.isApp">
+    <h3>Ready to install</h3>
+    <p class="muted" *ngIf="!library.length">No firmware in the app yet: choose a .bin file below once, and it is kept here.</p>
+    <div class="dd-device fw" *ngFor="let e of library" [class.likely]="compare(e.version) === 'newer'">
+      <mat-icon>{{ e.source === 'bundled' ? 'inventory_2' : 'history' }}</mat-icon>
+      <div class="grow">
+        <div class="title">DeepDeck {{ e.version }} <span class="badge" *ngIf="compare(e.version) === 'newer'">newer</span></div>
+        <div class="muted">{{ addedText(e) }} · built {{ e.built }} · {{ e.size / 1024 | number:'1.0-0' }} KB · {{ compare(e.version) }}</div>
+      </div>
+      <button class="btn-s small danger" *ngIf="e.source === 'history'" (click)="forget(e)" [disabled]="state === 'sending'">Remove</button>
+      <button class="btn-p" (click)="pick(e)" [disabled]="state === 'sending' || state === 'checking' || state === 'restarting'">Install</button>
+    </div>
+  </div>
+
   <div class="dd-card">
     <div class="dd-row">
-      <h3 class="grow">New firmware</h3>
+      <h3 class="grow">Another firmware file</h3>
       <button class="btn-s" (click)="choose()" [disabled]="state === 'sending' || state === 'checking'">Choose a .bin file</button>
     </div>
     <ng-container *ngIf="file">

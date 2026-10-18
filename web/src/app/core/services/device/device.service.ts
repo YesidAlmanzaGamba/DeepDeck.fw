@@ -24,6 +24,18 @@ export interface DeviceEvent {
   data: any;
 }
 
+/** A firmware image in the app's list (src-tauri/src/firmware.rs) */
+export interface FirmwareEntry {
+  path: string;
+  file_name: string;
+  version: string;
+  built: string;
+  size: number;
+  sha256: string;
+  source: 'bundled' | 'history';
+  added?: number;
+}
+
 /** A firmware image picked for an update (src-tauri/src/firmware.rs) */
 export interface FirmwareFile {
   path: string;
@@ -164,6 +176,23 @@ export class DeviceService {
 
   openFile(): Promise<string | null> {
     return this.invoke('open_text_file');
+  }
+
+  /** Firmware images that need no browsing: the one bundled with the app, and those installed before */
+  firmwareList(): Promise<FirmwareEntry[]> {
+    return this.invoke('firmware_list');
+  }
+
+  firmwareLoad(path: string): Promise<FirmwareFile> {
+    return this.invoke('firmware_load', { path });
+  }
+
+  firmwareRemember(path: string): Promise<void> {
+    return this.invoke('firmware_remember', { path });
+  }
+
+  firmwareForget(path: string): Promise<void> {
+    return this.invoke('firmware_forget', { path });
   }
 
   /** Pick a firmware .bin; the app checks it is a DeepDeck image and reads its version. */
