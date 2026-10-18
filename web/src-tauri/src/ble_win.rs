@@ -56,6 +56,8 @@ pub struct BleConn {
     rx: GattCharacteristic,
     _tx: GattCharacteristic,
     session: GattSession,
+    /// One line at a time: the chunks of two lines must not interleave
+    send_lock: tauri::async_runtime::Mutex<()>,
 }
 
 async fn characteristic(service: &GattDeviceService, uuid: GUID) -> Result<GattCharacteristic, String> {
@@ -166,16 +168,18 @@ pub async fn connect(
         .await
         .map_err(e)?;
     let mtu = session.MaxPduSize().map_err(e)?;
-    Ok((BleConn { _device: device, rx, _tx: tx, session }, mtu, name))
+    Ok((BleConn { _device: device, rx, _tx: tx, session, send_lock: Default::default() }, mtu, name))
 }
 
 impl BleConn {
-    /// Write a line in chunks of at most MTU-3 bytes
+    /// Write a line in chunks of at most MTU-3 bytes, and never more than 512: the largest attribute
+    /// value BLE allows. Longer writes are dropped by the DeepDeck without an error (no response).
     pub async fn send(&self, line: &str) -> Result<(), String> {
         let mtu = self.session.MaxPduSize().map_err(e)? as usize;
-        let chunk = mtu.saturating_sub(3).max(20);
+        let chunk = mtu.saturating_sub(3).clamp(20, 512);
         let mut data = line.as_bytes().to_vec();
         data.push(b'\n');
+        let _one_line_at_a_time = self.send_lock.lock().await;
         for part in data.chunks(chunk) {
             // IBuffer is not Send: start the write in a block so the buffer is gone before awaiting
             let operation = {

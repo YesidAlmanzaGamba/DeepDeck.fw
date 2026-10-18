@@ -5,6 +5,7 @@
     python cc_cli.py --ble watch                  # print events, e.g. layer.changed
     python cc_cli.py --usb COM3 selftest          # every read method, plus reversible writes
     python cc_cli.py --usb COM3 --ble selftest    # same, and compare both transports
+    python cc_cli.py --usb COM3 update build/DeepDeck.bin   # firmware update (fw.*), then restart
 
 --ble opens the DeepDeck already paired with this Windows PC (no scan; it does not advertise while
 connected). Install: python -m pip install bleak pyserial
@@ -106,6 +107,7 @@ class BleClient(Client):
         super().__init__("ble")
         self.device_name = device_name
         self.buffer = bytearray()
+        self.send_lock = asyncio.Lock()  # the chunks of two lines must not interleave
 
     async def open(self):
         from bleak import BleakClient
@@ -137,9 +139,10 @@ class BleClient(Client):
 
     async def _send(self, line):
         data = (line + "\n").encode()
-        chunk = max(20, self.client.mtu_size - 3)
-        for i in range(0, len(data), chunk):
-            await self.client.write_gatt_char(RX_UUID, data[i:i + chunk], response=False)
+        chunk = min(512, max(20, self.client.mtu_size - 3))  # 512: largest BLE attribute value
+        async with self.send_lock:
+            for i in range(0, len(data), chunk):
+                await self.client.write_gatt_char(RX_UUID, data[i:i + chunk], response=False)
 
     async def close(self):
         await self.client.disconnect()
@@ -314,6 +317,39 @@ async def selftest(clients):
 
 
 # ------------------------------------------------------------------------------------------------
+# firmware update
+
+async def update(client, path, corrupt=False):
+    import base64
+    import hashlib
+
+    image = open(path, "rb").read()
+    digest = hashlib.sha256(image).hexdigest()
+    if corrupt:  # test: the device must refuse it at fw.end
+        digest = "0" * 64
+    info = await client.request("fw.info")
+    print(f"device runs {info['version']} from {info['running']}; sending {len(image)} bytes")
+    begin = await client.request("fw.begin", {"size": len(image), "sha256": digest}, timeout=30)
+    chunk = begin["chunk_max"]
+    window = 3 if client.name == "usb" else 1  # see the app's update page
+    started = time.time()
+    pending = []
+    for offset in range(0, len(image), chunk):
+        data = base64.b64encode(image[offset:offset + chunk]).decode()
+        pending.append(asyncio.ensure_future(client.request("fw.chunk", {"offset": offset, "data": data}, timeout=30)))
+        if len(pending) >= window:
+            await pending.pop(0)
+        if offset // chunk % 64 == 0:
+            print(f"  {offset * 100 // len(image)}%", flush=True)
+    for p in pending:
+        await p
+    print(f"sent in {time.time() - started:.1f} s")
+    result = await client.request("fw.end", timeout=60)
+    print(f"accepted: {result['version']}, the DeepDeck restarts into it")
+    return 0
+
+
+# ------------------------------------------------------------------------------------------------
 
 async def run(args):
     clients = []
@@ -342,6 +378,8 @@ async def run(args):
             await asyncio.gather(*(pump(c) for c in clients))
         elif args.command == "selftest":
             return await selftest(clients)
+        elif args.command == "update":
+            return await update(clients[0], args.image, corrupt=args.corrupt)
     finally:
         for client in clients:
             await client.close()
@@ -359,6 +397,9 @@ def main():
     call.add_argument("params", nargs="?", help="params as JSON")
     sub.add_parser("watch")
     sub.add_parser("selftest")
+    upd = sub.add_parser("update")
+    upd.add_argument("image", help="firmware .bin (firmware/build/DeepDeck.bin)")
+    upd.add_argument("--corrupt", action="store_true", help="send a wrong SHA-256 (test: must be refused)")
     args = parser.parse_args()
     try:
         sys.exit(asyncio.run(run(args)) or 0)

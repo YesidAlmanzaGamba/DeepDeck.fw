@@ -25,6 +25,11 @@
 #include "config_service.h"
 #include "config_api.h"
 #include "wifi_handles.h"
+#include "esp_ota_ops.h"
+#include "esp_app_format.h"
+#include "esp_image_format.h"
+#include "mbedtls/base64.h"
+#include "mbedtls/sha256.h"
 
 #define TAG "config_api"
 
@@ -930,6 +935,238 @@ static cJSON *m_wifi_forget(cJSON *params, config_error_t *err)
 }
 
 // ---------------------------------------------------------------------------------------------
+// fw.*: firmware update from the app (R6.1)
+//
+// The image goes into the other OTA slot in chunks, in order. fw.end checks it twice (esp_ota_end
+// validates the image, and its SHA-256 must match the one sent with fw.begin), then restarts into
+// it. A new firmware that fails before it marks itself valid (end of app_main) is rolled back.
+
+#define FW_CHUNK_MAX 2048
+
+static struct
+{
+	bool active;
+	esp_ota_handle_t handle;
+	const esp_partition_t *slot;
+	uint32_t size;
+	uint32_t written;
+	uint8_t sha256[32];
+	mbedtls_sha256_context sha;
+	char version[32];
+} fw;
+
+static void fw_reset(void)
+{
+	if (fw.active)
+	{
+		esp_ota_abort(fw.handle);
+		mbedtls_sha256_free(&fw.sha);
+		halBLEFastLink(false);
+	}
+	memset(&fw, 0, sizeof(fw));
+}
+
+static bool parse_hex(const char *hex, uint8_t *out, size_t len)
+{
+	if (hex == NULL || strlen(hex) != len * 2)
+		return false;
+	for (size_t i = 0; i < len; i++)
+	{
+		unsigned v;
+		if (sscanf(hex + 2 * i, "%2x", &v) != 1)
+			return false;
+		out[i] = v;
+	}
+	return true;
+}
+
+static const char *ota_state_name(const esp_partition_t *part)
+{
+	esp_ota_img_states_t state;
+	if (esp_ota_get_state_partition(part, &state) != ESP_OK)
+		return "unknown";
+	switch (state)
+	{
+	case ESP_OTA_IMG_NEW:
+		return "new";
+	case ESP_OTA_IMG_PENDING_VERIFY:
+		return "pending_verify";
+	case ESP_OTA_IMG_VALID:
+		return "valid";
+	case ESP_OTA_IMG_INVALID:
+		return "invalid";
+	case ESP_OTA_IMG_ABORTED:
+		return "aborted";
+	default:
+		return "undefined";
+	}
+}
+
+static cJSON *m_fw_info(cJSON *params, config_error_t *err)
+{
+	const esp_partition_t *running = esp_ota_get_running_partition();
+	const esp_partition_t *next = esp_ota_get_next_update_partition(NULL);
+	const esp_app_desc_t *app = esp_ota_get_app_description();
+	cJSON *result = cJSON_CreateObject();
+	cJSON_AddStringToObject(result, "version", FIRMWARE_VERSION);
+	cJSON_AddStringToObject(result, "idf", app->idf_ver);
+	char built[40];
+	snprintf(built, sizeof(built), "%s %s", app->date, app->time);
+	cJSON_AddStringToObject(result, "built", built);
+	cJSON_AddStringToObject(result, "running", running ? running->label : "?");
+	cJSON_AddStringToObject(result, "state", running ? ota_state_name(running) : "?");
+	cJSON_AddNumberToObject(result, "slot_size", next ? next->size : 0);
+	cJSON_AddNumberToObject(result, "chunk_max", FW_CHUNK_MAX);
+	esp_app_desc_t other;
+	if (next != NULL && esp_ota_get_partition_description(next, &other) == ESP_OK)
+		cJSON_AddStringToObject(result, "other_version", other.version);
+	return result;
+}
+
+static cJSON *m_fw_begin(cJSON *params, config_error_t *err)
+{
+	cJSON *size = cJSON_GetObjectItem(params, "size");
+	cJSON *sha = cJSON_GetObjectItem(params, "sha256");
+	const esp_partition_t *slot = esp_ota_get_next_update_partition(NULL);
+	if (slot == NULL)
+		return fail(err, CONFIG_ERR_INTERNAL, "no OTA slot");
+	if (!cJSON_IsNumber(size) || size->valuedouble < 1024 || size->valuedouble > slot->size)
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "size: does not fit the firmware slot");
+	uint8_t digest[32];
+	if (!cJSON_IsString(sha) || !parse_hex(sha->valuestring, digest, sizeof(digest)))
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "sha256: 64 hex digits");
+
+	fw_reset(); // a previous update that never ended (app closed, link lost)
+	esp_err_t res = esp_ota_begin(slot, OTA_WITH_SEQUENTIAL_WRITES, &fw.handle);
+	if (res != ESP_OK)
+		return fail(err, CONFIG_ERR_INTERNAL, esp_err_to_name(res));
+	fw.active = true;
+	halBLEFastLink(true); // the transfer is bound by the BLE link: ask the host for its fastest pace
+	fw.slot = slot;
+	fw.size = size->valueint;
+	memcpy(fw.sha256, digest, sizeof(digest));
+	mbedtls_sha256_init(&fw.sha);
+	mbedtls_sha256_starts_ret(&fw.sha, 0);
+	ESP_LOGI(TAG, "firmware update: %u bytes into %s", (unsigned)fw.size, slot->label);
+
+	cJSON *result = cJSON_CreateObject();
+	cJSON_AddNumberToObject(result, "chunk_max", FW_CHUNK_MAX);
+	cJSON_AddStringToObject(result, "slot", slot->label);
+	return result;
+}
+
+// The first chunk must be a DeepDeck image: ESP image header, then the app description
+static bool fw_check_header(const uint8_t *data, size_t len, char *message, size_t message_len)
+{
+	const size_t desc_at = sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t);
+	if (len < desc_at + sizeof(esp_app_desc_t) || data[0] != ESP_IMAGE_HEADER_MAGIC)
+	{
+		strlcpy(message, "not an ESP32 firmware image", message_len);
+		return false;
+	}
+	esp_app_desc_t desc;
+	memcpy(&desc, data + desc_at, sizeof(desc));
+	if (desc.magic_word != ESP_APP_DESC_MAGIC_WORD ||
+		strncmp(desc.project_name, esp_ota_get_app_description()->project_name, sizeof(desc.project_name)) != 0)
+	{
+		strlcpy(message, "not a DeepDeck firmware", message_len);
+		return false;
+	}
+	strlcpy(fw.version, desc.version, sizeof(fw.version));
+	return true;
+}
+
+static cJSON *m_fw_chunk(cJSON *params, config_error_t *err)
+{
+	if (!fw.active)
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "no update in progress: fw.begin first");
+	cJSON *offset = cJSON_GetObjectItem(params, "offset");
+	cJSON *data = cJSON_GetObjectItem(params, "data");
+	if (!cJSON_IsNumber(offset) || (uint32_t)offset->valuedouble != fw.written)
+	{
+		char message[60];
+		snprintf(message, sizeof(message), "offset: expected %u", (unsigned)fw.written);
+		return fail(err, CONFIG_ERR_BAD_REQUEST, message);
+	}
+	if (!cJSON_IsString(data))
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "data: base64");
+
+	uint8_t *buf = malloc(FW_CHUNK_MAX + 3);
+	if (buf == NULL)
+		return fail(err, CONFIG_ERR_INTERNAL, "no memory");
+	size_t len = 0;
+	const char *b64 = data->valuestring;
+	if (mbedtls_base64_decode(buf, FW_CHUNK_MAX + 3, &len, (const unsigned char *)b64, strlen(b64)) != 0 ||
+		len == 0 || len > FW_CHUNK_MAX || fw.written + len > fw.size)
+	{
+		free(buf);
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "data: base64, at most chunk_max bytes, within size");
+	}
+	char message[60];
+	if (fw.written == 0 && !fw_check_header(buf, len, message, sizeof(message)))
+	{
+		free(buf);
+		fw_reset();
+		return fail(err, CONFIG_ERR_BAD_REQUEST, message);
+	}
+	esp_err_t res = esp_ota_write(fw.handle, buf, len);
+	if (res == ESP_OK)
+		mbedtls_sha256_update_ret(&fw.sha, buf, len);
+	free(buf);
+	if (res != ESP_OK)
+	{
+		fw_reset();
+		return fail(err, CONFIG_ERR_INTERNAL, esp_err_to_name(res));
+	}
+	fw.written += len;
+
+	cJSON *result = cJSON_CreateObject();
+	cJSON_AddNumberToObject(result, "written", fw.written);
+	return result;
+}
+
+static cJSON *m_fw_end(cJSON *params, config_error_t *err)
+{
+	if (!fw.active)
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "no update in progress");
+	if (fw.written != fw.size)
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "image incomplete");
+	uint8_t digest[32];
+	mbedtls_sha256_finish_ret(&fw.sha, digest);
+	mbedtls_sha256_free(&fw.sha);
+	esp_err_t res = esp_ota_end(fw.handle); // validates the image
+	fw.active = false;
+	if (res != ESP_OK)
+	{
+		fw_reset();
+		return fail(err, CONFIG_ERR_BAD_REQUEST, res == ESP_ERR_OTA_VALIDATE_FAILED ? "image is corrupt" : esp_err_to_name(res));
+	}
+	if (memcmp(digest, fw.sha256, sizeof(digest)) != 0)
+	{
+		fw_reset();
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "sha256 does not match: transfer damaged");
+	}
+	res = esp_ota_set_boot_partition(fw.slot);
+	if (res != ESP_OK)
+	{
+		fw_reset();
+		return fail(err, CONFIG_ERR_INTERNAL, esp_err_to_name(res));
+	}
+	ESP_LOGI(TAG, "firmware %s written to %s: restarting", fw.version, fw.slot->label);
+	cJSON *result = cJSON_CreateObject();
+	cJSON_AddStringToObject(result, "version", fw.version);
+	fw_reset();
+	defer(restart_now);
+	return result;
+}
+
+static cJSON *m_fw_abort(cJSON *params, config_error_t *err)
+{
+	fw_reset();
+	return cJSON_CreateObject();
+}
+
+// ---------------------------------------------------------------------------------------------
 // Dispatch
 
 static const config_method_t methods[] = {
@@ -958,6 +1195,11 @@ static const config_method_t methods[] = {
 	{"wifi.scan", m_wifi_scan},
 	{"wifi.set", m_wifi_set},
 	{"wifi.forget", m_wifi_forget},
+	{"fw.info", m_fw_info},
+	{"fw.begin", m_fw_begin},
+	{"fw.chunk", m_fw_chunk},
+	{"fw.end", m_fw_end},
+	{"fw.abort", m_fw_abort},
 };
 
 void config_api_init(void)

@@ -46,6 +46,7 @@
 
 #include "esp_system.h"
 #include "esp_wifi.h"
+#include "esp_ota_ops.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
@@ -251,6 +252,10 @@ void app_main()
 #ifdef WIFI_ENABLE
 	wifi_start(); // station only: the Command Center configures it over BLE or USB
 #endif
+
+	// Started fine: keep this firmware. After an update from the app (fw.*), a firmware that
+	// crashes before this line is rolled back to the previous one by the bootloader.
+	esp_ota_mark_app_valid_cancel_rollback();
 
 	ESP_LOGI("Main", "Main sequence done!");
 	ESP_LOGI("Main", "Size of the dd_layer: %d bytes", sizeof(dd_layer));

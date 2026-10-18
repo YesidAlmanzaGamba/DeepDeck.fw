@@ -15,7 +15,9 @@
 
 #define TAG "serial_tp"
 #define SERIAL_UART CONFIG_ESP_CONSOLE_UART_NUM
-#define UART_RX_BUF 2048
+// 8 KB = 0.7 s at 115200 baud: the reader task cannot run while flash is erased (layer saves,
+// firmware updates with chunks in flight), the IRAM interrupt keeps filling this buffer meanwhile
+#define UART_RX_BUF 8192
 #define UART_TX_BUF 2048
 #define READ_CHUNK 128
 

@@ -4,6 +4,8 @@ Product and architecture decisions, newest first. A decision stays valid until a
 
 | ID | Date | Decision | Decided by |
 |----|------|----------|------------|
+| D-030 | 2026-10-18 | Firmware updates go over BLE/USB from the app; downloading over WiFi is left for later | Claude |
+| D-029 | 2026-10-18 | Bootloader rollback on: a new firmware must mark itself valid at the end of `app_main` | Claude |
 | D-028 | 2026-10-18 | Phase 4 runs without the owner: conservative choices, recorded here, branch `phase4` not pushed | Claude |
 | D-027 | 2026-10-18 | Keep the partition table when removing SPIFFS; `www_0` stays unused | Claude |
 | D-026 | 2026-10-18 | The Tauri CLI runs through `npx @tauri-apps/cli@2.12.3`, not as an npm dependency | Claude |
@@ -34,6 +36,15 @@ Product and architecture decisions, newest first. A decision stays valid until a
 | D-001 | 2026-10-16 | One repository for firmware and web, with both histories kept | owner |
 
 ## Details
+
+**D-030:** a WiFi download (the app serves the file, the DeepDeck fetches it) would take seconds
+instead of minutes. But it needs the PC and the DeepDeck on the same network, an inbound firewall
+rule for the app, and an HTTP client and TLS on the device. USB at 8 KB/s (under 3 minutes) is
+acceptable for now.
+
+**D-029:** the bootloader was reflashed once over the cable (with this firmware). Anything that
+blocks `app_main` before its last lines now causes a rollback after the next update; keep the
+`esp_ota_mark_app_valid_cancel_rollback()` call last.
 
 **D-028:** the owner asked for all ten suggestions in a row, to review the next day. Nothing is
 pushed or merged to `main` until they have looked at it.

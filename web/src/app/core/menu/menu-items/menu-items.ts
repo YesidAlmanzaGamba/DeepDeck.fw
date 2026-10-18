@@ -56,6 +56,12 @@ const MENUITEMS: Menu[] = [
         icon: 'memory',
     },
     {
+        state: 'update',
+        name: 'UPDATE',
+        type: 'link',
+        icon: 'system_update',
+    },
+    {
         state: 'log',
         name: 'LOG',
         type: 'link',

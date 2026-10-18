@@ -41,6 +41,12 @@ QueueHandle_t media_q;
 static uint16_t hid_conn_id = 0;
 /** @brief Do we have a secure connection? */
 static bool sec_conn = false;
+
+// The host's connection, for halBLEFastLink(): its address and the parameters it chose
+static esp_bd_addr_t peer_bda;
+static bool have_peer = false;
+static esp_ble_conn_update_params_t host_params;
+static bool fast_link = false;
 /** @brief Callback for HID events. */
 //static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *param);
 /** @brief Full UUID for the HID service */
@@ -83,6 +89,27 @@ void halBLESetDeviceName(const char *name) {
 	}
 }
 
+void halBLEFastLink(bool fast) {
+	if (!have_peer || fast == fast_link) {
+		ESP_LOGI(LOG_TAG, "fast link %d not requested (bonded host: %d, already: %d)", fast, have_peer, fast_link);
+		return;
+	}
+	esp_ble_conn_update_params_t params = host_params;
+	if (fast) {
+		// 7.5-15 ms, and no skipped intervals: bulk transfers (firmware update) would wait for them
+		params.min_int = 6;
+		params.max_int = 12;
+		params.latency = 0;
+		params.timeout = 400;
+	} else if (host_params.max_int == 0) {
+		return; // never saw the host's parameters: leave the link as it is
+	}
+	memcpy(params.bda, peer_bda, sizeof(esp_bd_addr_t));
+	fast_link = fast;
+	esp_err_t err = esp_ble_gap_update_conn_params(&params);
+	ESP_LOGI(LOG_TAG, "%s link requested: %s", fast ? "fast" : "normal", esp_err_to_name(err));
+}
+
 const char *halBLEGetDeviceName(void) {
 	return device_name;
 }
@@ -115,6 +142,8 @@ static void hidd_event_callback(esp_hidd_cb_event_t event,
 	case ESP_HIDD_EVENT_BLE_DISCONNECT:
 		sec_conn = false;
 		ESP_LOGI(LOG_TAG, "ESP_HIDD_EVENT_BLE_DISCONNECT");
+		have_peer = false;
+		fast_link = false;
 		esp_ble_gap_start_advertising(&hidd_adv_params);
 		break;
 	case ESP_HIDD_EVENT_BLE_VENDOR_REPORT_WRITE_EVT:
@@ -142,11 +171,29 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
 		}
 		esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, true);
 		break;
+	case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:
+		ESP_LOGI(LOG_TAG, "connection: interval %.2f ms, latency %d, timeout %d ms",
+				param->update_conn_params.conn_int * 1.25, param->update_conn_params.latency,
+				param->update_conn_params.timeout * 10);
+		if (!fast_link) {
+			host_params.min_int = param->update_conn_params.conn_int;
+			host_params.max_int = param->update_conn_params.conn_int;
+			host_params.latency = param->update_conn_params.latency;
+			host_params.timeout = param->update_conn_params.timeout;
+		}
+		break;
+	case ESP_GAP_BLE_SET_PKT_LENGTH_COMPLETE_EVT:
+		ESP_LOGI(LOG_TAG, "packet length: rx %d, tx %d", param->pkt_data_lenth_cmpl.params.rx_len,
+				param->pkt_data_lenth_cmpl.params.tx_len);
+		break;
 	case ESP_GAP_BLE_AUTH_CMPL_EVT:
 		sec_conn = true;
 		esp_bd_addr_t bd_addr;
 		memcpy(bd_addr, param->ble_security.auth_cmpl.bd_addr,
 				sizeof(esp_bd_addr_t));
+		memcpy(peer_bda, bd_addr, sizeof(esp_bd_addr_t));
+		have_peer = param->ble_security.auth_cmpl.success;
+		fast_link = false;
 		ESP_LOGI(LOG_TAG, "remote BD_ADDR: %08x%04x",
 				(bd_addr[0] << 24) + (bd_addr[1] << 16) + (bd_addr[2] << 8)
 						+ bd_addr[3], (bd_addr[4] << 8) + bd_addr[5]);
@@ -161,6 +208,8 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
 			// Ask bonded hosts to refresh their cached GATT database, which may predate the config
 			// service (Windows ignores it: such hosts must re-pair once, see docs/protocol.md)
 			config_service_indicate_service_changed(bd_addr);
+			// longer link-layer packets (Data Length Extension): a 512-byte write takes 3 packets, not 19
+			esp_ble_gap_set_pkt_data_len(bd_addr, 251);
 		}
 		break;
 	default:

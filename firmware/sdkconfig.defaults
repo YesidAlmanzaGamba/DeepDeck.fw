@@ -807,3 +807,11 @@ CONFIG_SUPPORT_TERMIOS=y
 CONFIG_WL_SECTOR_SIZE_512=
 CONFIG_WL_SECTOR_SIZE_4096=y
 CONFIG_WL_SECTOR_SIZE=4096
+
+# Firmware update from the app (R6.1): a new image that fails before marking itself valid
+# (end of app_main) is rolled back by the bootloader
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# The USB protocol channel (UART0) must keep receiving while flash is written (layer saves,
+# firmware updates): otherwise the 128-byte RX FIFO overflows and request bytes are lost
+CONFIG_UART_ISR_IN_IRAM=y

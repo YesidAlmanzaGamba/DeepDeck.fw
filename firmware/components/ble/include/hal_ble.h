@@ -104,4 +104,8 @@ void halBLESetDeviceName(const char *name);
 /** @brief Advertised BLE name. */
 const char *halBLEGetDeviceName(void);
 
+/** @brief Ask the host for a fast connection (7.5-15 ms, no latency) during bulk transfers such as a
+ * firmware update, or for its own parameters back. Does nothing without a bonded connection. */
+void halBLEFastLink(bool fast);
+
 #endif /* _HAL_BLE_H_ */

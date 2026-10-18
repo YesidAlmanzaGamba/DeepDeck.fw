@@ -5,6 +5,7 @@
 
 #[cfg(windows)]
 mod ble_win;
+mod firmware;
 mod link;
 mod selftest;
 
@@ -68,6 +69,23 @@ async fn open_text_file() -> Result<Option<String>, String> {
     .map_err(|err| err.to_string())?
 }
 
+/// Pick a firmware .bin and check it (DeepDeck image, version). Returns None if cancelled.
+#[tauri::command]
+async fn open_firmware_file() -> Result<Option<firmware::FirmwareFile>, String> {
+    // DD_CC_FIRMWARE_FILE: tests pick this file instead of showing the dialog
+    if let Ok(path) = std::env::var("DD_CC_FIRMWARE_FILE") {
+        return firmware::read(std::path::Path::new(&path)).map(Some);
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        match rfd::FileDialog::new().add_filter("DeepDeck firmware", &["bin"]).pick_file() {
+            Some(path) => firmware::read(&path).map(Some),
+            None => Ok(None),
+        }
+    })
+    .await
+    .map_err(|err| err.to_string())?
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
@@ -86,7 +104,8 @@ fn main() {
             link_status,
             send,
             save_text_file,
-            open_text_file
+            open_text_file,
+            open_firmware_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running the DeepDeck Command Center");

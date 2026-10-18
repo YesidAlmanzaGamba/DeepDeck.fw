@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-024 | 2026-10-18 | Firmware update from the app: `fw.*`, rollback, Update page, `cc_cli update`; BLE writes capped at 512 bytes and serialised; UART ISR in IRAM; BLE Data Length Extension | firmware, app, tools | (branch `phase4`) | updates over USB and BLE, corrupt / foreign images refused, crashing image rolled back, update from the app's page | yes (automated) |
 | CH-023 | 2026-10-18 | Remove the WiFi portal: web server, SPIFFS image, setup network; WiFi station joins without restart, `wifi.forget`; shared BLE access in the app; I2C mutex created before BLE; fw 0.7.0 | firmware, web, app | (see branch `phase4`) | build, flashed, selftest 0 failures over USB+BLE, heap 64 KB (was 38), app + cc_cli on BLE together | yes (automated); `wifi.set`/`forget`: owner |
 | CH-022 | 2026-10-18 | README rewritten for the reworked project and the app; suggested roadmap R6; `main` fast-forwarded to `command-center` and pushed | docs | (this commit) | links checked | n/a |
 | CH-021 | 2026-10-18 | Command Center: Lighting (effects, live preview, per-layer key painter), WiFi, Device (backup/restore), Log pages | web | 3f93b42 | `ng build`, every page loaded with real data over BLE in the built app | yes (app, automated) |
@@ -35,6 +36,39 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-024: Firmware update from the app (R6.1)
+- **Why:** updating needed ESP-IDF, esptool and the cable.
+- **What:**
+  - Firmware: `fw.info`, `fw.begin`, `fw.chunk`, `fw.end`, `fw.abort` (`config_api.c`). The image goes
+    into the other OTA slot (`ota_0`/`ota_1` already existed); the first chunk must be a DeepDeck
+    image, `esp_ota_end` validates it and its SHA-256 must match the app's.
+  - Rollback on (`CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE`, new bootloader): the firmware marks itself
+    valid at the end of `app_main`; one that crashes before is replaced by the previous one.
+  - The image's version (`esp_app_desc_t.version`) now comes from `FIRMWARE_VERSION`
+    (`firmware/CMakeLists.txt`), so the app shows the version of a file before installing it.
+  - App: Update page (installed version and slot, file check, progress, speed, time left, cancel,
+    result after the restart); `open_firmware_file` checks the image in Rust (`firmware.rs`).
+  - `cc_cli.py update <bin> [--corrupt]`.
+- **Bugs found on the way:**
+  - BLE lines longer than about 514 bytes never arrived: clients wrote MTU−3 = 514-byte chunks, but
+    an attribute value is at most 512 bytes, and write-without-response drops the rest silently.
+    Clients now cap chunks at 512 (app, cc_cli, protocol.md).
+  - Two BLE requests sent at once could interleave their chunks (app and cc_cli): one line at a
+    time now.
+  - The UART interrupt was not in IRAM: bytes arriving over USB while flash was written (a layer
+    save, an update chunk) were lost. `CONFIG_UART_ISR_IN_IRAM=y`.
+  - BLE links now use Data Length Extension (251-byte packets) and the host's parameters are
+    logged. Neither made BLE faster: 15 ms interval, latency 0, about 2 KB/s, bound by the host.
+  - Tried and dropped: pausing WiFi during a BLE update (coexistence). It broke the BLE session.
+- **Verified on the device:**
+  - update over USB (`cc_cli`, 3 in flight: 8.2 KB/s) and over BLE (one at a time: 2 KB/s);
+  - device restarts into the other slot, `fw.info` says `valid`;
+  - wrong SHA-256 and a non-DeepDeck image (the bootloader .bin) refused, nothing installed;
+  - an image that calls `abort()` at start: installed, crashed, rolled back to the previous slot,
+    which started normally;
+  - the whole flow from the app's Update page over USB.
+- **Owner to check:** an update from the app over Bluetooth (about 11 minutes).
 
 ### CH-023: Remove the WiFi portal (R4.5)
 - **Why:** the Command Center does everything the portal did; the portal cost RAM and flash, and

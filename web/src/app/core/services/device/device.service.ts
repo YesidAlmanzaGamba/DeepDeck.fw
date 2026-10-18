@@ -24,6 +24,17 @@ export interface DeviceEvent {
   data: any;
 }
 
+/** A firmware image picked for an update (src-tauri/src/firmware.rs) */
+export interface FirmwareFile {
+  path: string;
+  size: number;
+  sha256: string;
+  project: string;
+  version: string;
+  built: string;
+  data: string; // base64
+}
+
 export class DeviceError extends Error {
   constructor(public code: string, message: string) {
     super(`${code}: ${message}`);
@@ -153,6 +164,11 @@ export class DeviceService {
 
   openFile(): Promise<string | null> {
     return this.invoke('open_text_file');
+  }
+
+  /** Pick a firmware .bin; the app checks it is a DeepDeck image and reads its version. */
+  openFirmwareFile(): Promise<FirmwareFile | null> {
+    return this.invoke('open_firmware_file');
   }
 
   private invoke<T = any>(cmd: string, args?: any): Promise<T> {

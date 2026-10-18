@@ -1,0 +1,43 @@
+<div class="dd-page">
+  <h2>Firmware update</h2>
+  <div class="dd-error" *ngIf="error">{{ error }}</div>
+  <div class="dd-ok" *ngIf="message">{{ message }}</div>
+
+  <div class="dd-card" *ngIf="info">
+    <h3>Installed</h3>
+    <div class="kv"><span>Version</span><span>{{ info.version }}</span></div>
+    <div class="kv"><span>Built</span><span>{{ info.built }} · ESP-IDF {{ info.idf }}</span></div>
+    <div class="kv"><span>Slot</span><span>{{ info.running }}{{ info.other_version ? ' (other slot: ' + info.other_version + ')' : '' }}</span></div>
+  </div>
+
+  <div class="dd-card">
+    <div class="dd-row">
+      <h3 class="grow">New firmware</h3>
+      <button class="btn-s" (click)="choose()" [disabled]="state === 'sending' || state === 'checking'">Choose a .bin file</button>
+    </div>
+    <ng-container *ngIf="file">
+      <div class="kv"><span>File</span><span>{{ file.path }}</span></div>
+      <div class="kv"><span>Version</span><span>{{ file.version }} <span class="muted">· {{ fileNote() }}</span></span></div>
+      <div class="kv"><span>Built</span><span>{{ file.built }}</span></div>
+      <div class="kv"><span>Size</span><span>{{ file.size / 1024 | number:'1.0-0' }} KB · {{ estimate(file.size) }} over {{ viaUsb ? 'the cable' : 'Bluetooth' }}</span></div>
+      <p class="muted" *ngIf="!viaUsb">Over the USB cable it takes less than half the time: connect over USB in Connect.</p>
+      <div class="dd-row" style="margin-top: 12px">
+        <button class="btn-p" (click)="start()" *ngIf="state !== 'sending'" [disabled]="state === 'checking' || state === 'restarting'">Install</button>
+        <button class="btn-s danger" (click)="cancel()" *ngIf="state === 'sending'">Cancel</button>
+      </div>
+    </ng-container>
+    <p class="muted" *ngIf="!file">Use <code>firmware/build/DeepDeck.bin</code> from a build, or the file from a release.</p>
+
+    <div *ngIf="state === 'sending' || state === 'checking'" class="dd-progress">
+      <div class="bar"><div class="fill" [style.width.%]="progress"></div></div>
+      <div class="muted">
+        {{ state === 'checking' ? 'The DeepDeck is checking the image…' : progress + ' % · ' + (rate / 1024 | number:'1.1-1') + ' KB/s · ' + remaining() }}
+      </div>
+    </div>
+  </div>
+
+  <p class="muted">
+    The new firmware is written next to the installed one, checked, and started. If it does not start
+    correctly the DeepDeck goes back to the installed firmware by itself. Layers, macros and settings are kept.
+  </p>
+</div>

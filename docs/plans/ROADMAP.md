@@ -39,7 +39,7 @@ In suggested order. R4.5 (remove the portal) comes first because it frees flash 
 
 | ID | Item | Status |
 |----|------|--------|
-| R6.1 | Firmware update from the app (OTA over WiFi or USB); needs two app partitions, so after R4.5 | proposed |
+| R6.1 | Firmware update from the app (over BLE or USB; WiFi download later, D-030) | done |
 | R6.2 | New keymap editor in the app's style: visual 4x4 + knobs, keycode search, drag and drop | proposed |
 | R6.3 | Per-application layers: the app switches layer by the focused window | proposed |
 | R6.4 | Tray icon and start with Windows; layer status and link-lost notice | proposed |

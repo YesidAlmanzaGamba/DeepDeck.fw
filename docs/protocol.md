@@ -12,7 +12,7 @@ Lines are at most **4096 bytes** in either direction.
 
 | Transport | How a line travels |
 |-----------|--------------------|
-| BLE | GATT service `dd0e0001-7f4b-4c1a-9d3e-2a6b1c5e8f00`. The app writes to RX `dd0e0002-…` (write or write-without-response) in chunks of at most MTU−3 bytes; the device notifies on TX `dd0e0003-…` in chunks of at most MTU−3 bytes. Both sides join chunks until `\n`. Both characteristics require an encrypted (bonded) link. The device asks for MTU 517. |
+| BLE | GATT service `dd0e0001-7f4b-4c1a-9d3e-2a6b1c5e8f00`. The app writes to RX `dd0e0002-…` (write or write-without-response) in chunks of at most MTU−3 bytes **and never more than 512** (the largest BLE attribute value; longer writes are dropped silently); the device notifies on TX `dd0e0003-…` in chunks of at most MTU−3 bytes. Both sides join chunks until `\n`. Both characteristics require an encrypted (bonded) link. The device asks for MTU 517. |
 | USB | UART0 at 115200 8N1, shared with the log console. Protocol lines start with `@DD ` in both directions; every other line is log output. Open the port with **DTR and RTS de-asserted**, otherwise the auto-reset circuit reboots the board. |
 
 Hosts that paired with firmware older than the Command Center must **remove and pair the DeepDeck
@@ -111,6 +111,18 @@ Error codes:
 | `wifi.scan` | none | `{"aps":[{"ssid":"...","rssi":-40,"channel":6,"auth":"WPA2_PSK"}]}`; takes about 2–3 s |
 | `wifi.set` | `{"ssid":"...","pass":"..."}` | `{}`; the network is stored (the password is never logged) and joined at once, without a restart (0.7.0; older firmware restarted). `wifi.changed` follows when it gets an address. A network that cannot be reached is retried 5 times at once, then every 30 s |
 | `wifi.forget` | none | `{}`; the stored network is erased and WiFi disconnects |
+| `fw.info` | none | `{"version":"0.7.0","idf":"v4.4.7","built":"Oct 18 2026 03:14:05","running":"app0","state":"valid","slot_size":1536000,"chunk_max":2048,"other_version":"0.7.0"}` |
+| `fw.begin` | `{"size":1328672,"sha256":"<64 hex>"}` (SHA-256 of the whole file) | `{"chunk_max":2048,"slot":"app1"}`; starts an update into the other slot (a previous unfinished one is dropped) and asks the BLE host for a fast link |
+| `fw.chunk` | `{"offset":0,"data":"<base64>"}`: at most `chunk_max` bytes, offsets in order | `{"written":2048}`. The first chunk must be a DeepDeck image (`bad_request` otherwise and the update is dropped) |
+| `fw.end` | none | `{"version":"0.7.1"}`, then the device restarts into the new firmware. `bad_request` if the image is incomplete, corrupt, or its SHA-256 differs |
+| `fw.abort` | none | `{}`; drops an unfinished update |
+
+**Firmware update.** `fw.begin`, one `fw.chunk` per piece, `fw.end`. The new firmware must mark
+itself valid when it has started (end of `app_main`); one that crashes before that is rolled back
+to the previous firmware by the bootloader. Measured: about 8 KB/s over USB with 3 chunks in flight
+(the UART interrupt runs from IRAM, so nothing is lost while flash is written); about 2 KB/s over
+BLE, one chunk at a time (more in flight is not faster). Layers, macros and settings (NVS) are not
+touched.
 
 ## Events
 
