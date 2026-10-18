@@ -99,6 +99,13 @@ DD_CC_SELFTEST=1 web/src-tauri/target/release/deepdeck-command-center.exe   # ap
 
 The self-test script needs `bleak` and `pyserial`.
 
+## Automatic builds
+
+Every push builds the firmware and the Windows installer on GitHub Actions
+(`.github/workflows/build.yml`); the files are under the run's *Artifacts*. A tag like `v0.7.0`
+also creates a draft release with the installer and `DeepDeck-v0.7.0.bin`, which the app's
+Update page can install.
+
 ## History
 
 `firmware/` comes from [DeepDeck.Ahuyama.fw](https://github.com/DeepSea-Developments/DeepDeck.Ahuyama.fw)

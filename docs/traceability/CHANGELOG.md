@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-029 | 2026-10-18 | GitHub Actions: firmware (ESP-IDF 4.4.7 container), Windows installer, Rust check on Linux and macOS, draft release on `v*` tags | CI | (branch `phase4`) | YAML parsed; the same steps run locally: clean firmware build from sdkconfig.defaults, `npm ci`, `cargo check --locked` | not run on GitHub yet |
 | CH-028 | 2026-10-18 | Screen brightness, screen off after N idle minutes, LEDs off with it (`device.settings.*`); Device page card | firmware, app | (branch `phase4`) | screen off at 60 s with a 1-minute timeout, back on with a layer change, page writes the setting | yes (automated); owner: brightness by eye |
 | CH-027 | 2026-10-18 | Tray icon (link and layer), close to tray, start with Windows (hidden), single instance, notification when the link is lost | app | (branch `phase4`) | autostart registry on/off, close hides, second start shows the window, `--hidden`, reconnect after a device restart | partly (owner: tray and notification by eye) |
 | CH-026 | 2026-10-18 | Layers by application: the app switches the DeepDeck's layer when another program comes to the front | app | (branch `phase4`) | fallback and a matching rule switched the layer on the device | yes (automated) |
@@ -40,6 +41,21 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-029: Automatic builds (R6.6)
+- **What:** `.github/workflows/build.yml`, on every push and pull request:
+  - `firmware`: `idf.py -C firmware build` in `espressif/idf:v4.4.7`; artifact with `DeepDeck.bin`,
+    bootloader, partition table, `ota_data_initial.bin` and `flash_args`;
+  - `app-windows`: `npm ci`, then `npx @tauri-apps/cli@2.12.3 build`; artifact: the NSIS installer;
+  - `app-check`: `cargo check --locked` on Ubuntu and macOS (the Rust side only);
+  - `release` (tags `v*`): a **draft** GitHub release with the installer, `DeepDeck-<tag>.bin`
+    (for the app's Update page) and a zip of the images for esptool.
+- **Checked locally:** the YAML parses; a firmware build from `sdkconfig.defaults` only (no local
+  `sdkconfig`, as on CI) succeeds with rollback, IRAM UART and coexistence on; `npm ci` installs
+  from the lockfile; `cargo check --locked` passes.
+- **Not yet:** it has never run on GitHub (the branch is not pushed). The first run may need fixes,
+  most likely in the Linux packages list or the macOS check.
+- **To make a release:** `git tag v0.7.0 && git push origin v0.7.0`, then publish the draft.
 
 ### CH-028: Screen and idle settings (R6.5)
 - **What:** `main/device_settings.c` (NVS namespace `settings`): screen brightness (OLED contrast),
