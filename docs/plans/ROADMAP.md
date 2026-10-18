@@ -19,7 +19,7 @@ R1.2–R1.4 wait until this is done; R1.4 (API safety) is largely covered, becau
 | R4.1 | Firmware config core (`config_api`, `config_task`, WiFi/BLE coexistence) | done: [plan](2026-10-18-command-center-phase1.md) |
 | R4.2 | Firmware transports: BLE GATT config service, UART0 framing | done (in Phase 1) |
 | R4.3 | Command Center app: Tauri, transport layer, Connect and WiFi pages, plus dashboard, active layer, rename, backup/restore, USB log, restart (D-017) | done on Windows: [plan](2026-10-18-app-lighting-oled.md); owner to try it |
-| R4.4 | Installers for Windows, macOS and Linux (CI); app BLE on macOS (CoreBluetooth) and Linux (BlueZ) (D-024) | proposed |
+| R4.4 | Installers for Windows, macOS and Linux (CI); app BLE on macOS (CoreBluetooth) and Linux (BlueZ) (D-024) | BLE written (btleplug), untested; Windows installer in CI; macOS/Linux installers not yet |
 | R4.5 | Remove web server, SPIFFS, AP mode (no repartition, D-027) | done: [plan](2026-10-18-phase4.md) |
 
 ## 5. Device experience (asked by the owner on 2026-10-18)

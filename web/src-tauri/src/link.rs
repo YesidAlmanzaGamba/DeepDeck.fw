@@ -57,8 +57,7 @@ struct Line {
 }
 
 enum Handle {
-    #[cfg(windows)]
-    Ble(Arc<crate::ble_win::BleConn>),
+    Ble(Arc<crate::ble::BleConn>),
     Usb(UsbHandle),
 }
 
@@ -148,12 +147,11 @@ impl Links {
         let generation = self.generation.fetch_add(1, Ordering::SeqCst) + 1;
         let handle = match target.kind {
             Kind::Usb => Handle::Usb(open_usb(self.clone(), app.clone(), &target.id, generation)?),
-            #[cfg(windows)]
             Kind::Ble => {
-                let lines = crate::ble_win::LineBuffer::default();
+                let lines = crate::ble::LineBuffer::default();
                 let app_lines = app.clone();
                 let (links, app_lost) = (self.clone(), app.clone());
-                let (conn, _mtu, name) = crate::ble_win::connect(
+                let (conn, _mtu, name) = crate::ble::connect(
                     &target.id,
                     move |bytes| {
                         for line in lines.push(&bytes) {
@@ -168,8 +166,6 @@ impl Links {
                 }
                 Handle::Ble(Arc::new(conn))
             }
-            #[cfg(not(windows))]
-            Kind::Ble => return Err("Bluetooth is only supported on Windows for now: use the USB cable".into()),
         };
         *self.active.lock().unwrap() = Some(Active { target, handle, generation });
         let status = self.status();
@@ -179,22 +175,19 @@ impl Links {
 
     pub async fn send(&self, app: &AppHandle, line: String) -> Result<(), String> {
         enum Out {
-            #[cfg(windows)]
-            Ble(Arc<crate::ble_win::BleConn>),
+            Ble(Arc<crate::ble::BleConn>),
             Usb(SharedPort),
         }
         let (out, generation) = {
             let active = self.active.lock().unwrap();
             let a = active.as_ref().ok_or("not connected to a DeepDeck")?;
             let out = match &a.handle {
-                #[cfg(windows)]
                 Handle::Ble(conn) => Out::Ble(conn.clone()),
                 Handle::Usb(usb) => Out::Usb(usb.port.clone()),
             };
             (out, a.generation)
         };
         let result = match out {
-            #[cfg(windows)]
             Out::Ble(conn) => conn.send(&line).await,
             Out::Usb(port) => port
                 .lock()
@@ -307,8 +300,7 @@ pub async fn list_devices() -> Vec<DeviceEntry> {
             list.push(DeviceEntry { kind: Kind::Usb, id: p.port_name.clone(), name: p.port_name, detail, likely });
         }
     }
-    #[cfg(windows)]
-    if let Ok(paired) = crate::ble_win::paired().await {
+    if let Ok(paired) = crate::ble::paired().await {
         for d in paired {
             let lower = d.name.to_lowercase();
             let likely = lower.contains("ahuyama") || lower.contains("deepdeck");

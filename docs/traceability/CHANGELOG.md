@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-030 | 2026-10-18 | Bluetooth for the app on macOS and Linux (btleplug backend, same API as the WinRT one) | app | (branch `phase4`) | type-checked against btleplug; Windows BLE and USB self-tests unchanged | no (no Mac or Linux here) |
 | CH-029 | 2026-10-18 | GitHub Actions: firmware (ESP-IDF 4.4.7 container), Windows installer, Rust check on Linux and macOS, draft release on `v*` tags | CI | (branch `phase4`) | YAML parsed; the same steps run locally: clean firmware build from sdkconfig.defaults, `npm ci`, `cargo check --locked` | not run on GitHub yet |
 | CH-028 | 2026-10-18 | Screen brightness, screen off after N idle minutes, LEDs off with it (`device.settings.*`); Device page card | firmware, app | (branch `phase4`) | screen off at 60 s with a 1-minute timeout, back on with a layer change, page writes the setting | yes (automated); owner: brightness by eye |
 | CH-027 | 2026-10-18 | Tray icon (link and layer), close to tray, start with Windows (hidden), single instance, notification when the link is lost | app | (branch `phase4`) | autostart registry on/off, close hides, second start shows the window, `--hidden`, reconnect after a device restart | partly (owner: tray and notification by eye) |
@@ -41,6 +42,19 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-030: Bluetooth on macOS and Linux (R4.4, app part)
+- **What:** `src-tauri/src/ble_btleplug.rs` with the same API as `ble_win.rs`; `main.rs` picks one
+  as `ble` per OS, and `link.rs` no longer has Windows-only branches. Paired/known devices plus a
+  2 s scan; writes with response in 180-byte chunks (below MTU−3 on macOS and BlueZ, the DeepDeck
+  ignores prepared writes); notifications joined into lines; disconnect events end the link.
+  Dropping the link never disconnects the device (the OS uses it as a keyboard).
+- **Checked:** the module was type-checked against btleplug 0.11.8 by compiling it as the Windows
+  backend once; the Windows WinRT path still passes the app self-test over BLE and USB; CI runs
+  `cargo check` on Ubuntu and macOS.
+- **Limits:** untested on hardware. macOS only finds a DeepDeck that advertises, so one connected
+  to the Mac as a keyboard may not appear (CoreBluetooth would need
+  `retrieveConnectedPeripherals`, which btleplug does not expose).
 
 ### CH-029: Automatic builds (R6.6)
 - **What:** `.github/workflows/build.yml`, on every push and pull request:

@@ -3,8 +3,13 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+// BLE: WinRT on Windows (D-015), btleplug on macOS and Linux (R4.4); the same API in both
 #[cfg(windows)]
-mod ble_win;
+#[path = "ble_win.rs"]
+mod ble;
+#[cfg(not(windows))]
+#[path = "ble_btleplug.rs"]
+mod ble;
 mod app_layers;
 mod desktop;
 mod firmware;

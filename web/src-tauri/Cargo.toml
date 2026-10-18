@@ -18,6 +18,13 @@ rfd = "0.15"
 sha2 = "0.10"
 base64 = "0.22"
 
+# BLE on macOS and Linux (R4.4); Windows uses its own WinRT module (ble_win.rs, D-015)
+[target.'cfg(not(windows))'.dependencies]
+btleplug = "0.11"
+futures = "0.3"
+tokio = { version = "1", features = ["time"] }
+uuid = "1"
+
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = [
     "Devices_Bluetooth",

@@ -64,7 +64,10 @@ every product decision is in the [decision log](docs/traceability/DECISIONS.md).
   and pair it again once, because Windows caches the old services.
 - USB: plug the DeepDeck's USB cable in. It shows as a CP210x port.
 
-**Platforms.** Windows: Bluetooth and USB. macOS and Linux: USB now, Bluetooth later (roadmap R4.4).
+**Platforms.** Windows: Bluetooth and USB, tested. macOS and Linux: USB, and Bluetooth through btleplug, which is
+written but not tested on those systems yet. On macOS a DeepDeck connected to the Mac as a keyboard may not be
+found over Bluetooth (it stops advertising); use the cable there. Layers by application and start-at-login are
+Windows only for now.
 
 ## Building
 
