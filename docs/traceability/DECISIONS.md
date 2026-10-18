@@ -4,6 +4,11 @@ Product and architecture decisions, newest first. A decision stays valid until a
 
 | ID | Date | Decision | Decided by |
 |----|------|----------|------------|
+| D-014 | 2026-10-17 | One JSON-per-line protocol mirroring the REST API, shared by BLE, USB and (temporarily) HTTP | Claude |
+| D-013 | 2026-10-17 | Keep the web server until the app covers everything, then remove it with SPIFFS and AP mode | owner |
+| D-012 | 2026-10-17 | The app talks over BLE and USB serial, both from the start | owner |
+| D-011 | 2026-10-17 | Tauri v2 app reusing the Angular screens, for Windows, macOS and Linux | owner |
+| D-010 | 2026-10-17 | Configure the DeepDeck from a desktop app instead of the WiFi AP plus web portal | owner |
 | D-009 | 2026-10-17 | Plans live in `docs/plans/` and every change is logged in `docs/traceability/` | owner |
 | D-008 | 2026-10-17 | Shrink web images instead of enlarging the `www_0` partition (for now) | Claude |
 | D-007 | 2026-10-17 | Roadmap order: group 1 (finish half-done work) first, starting with R1.1 | owner |
@@ -15,6 +20,16 @@ Product and architecture decisions, newest first. A decision stays valid until a
 | D-001 | 2026-10-16 | One repository for firmware and web, with both histories kept | owner |
 
 ## Details
+
+**D-010 to D-014:** see [2026-10-17-command-center](../plans/2026-10-17-command-center.md).
+- **Why (owner):** setting WiFi through the device's own AP means switching the PC's network back and
+  forth, and the web app has to be compiled into the firmware.
+- **Side benefits:**
+  - closes the open AP (fixed password `DeepDeck`);
+  - frees the 600 KB `www_0` partition;
+  - the BLE link is already paired and encrypted.
+- **Risk checked first, in Phase 0:** can a desktop app reach a custom GATT service of a BLE keyboard
+  that the OS is already connected to?
 
 **D-009:** each non-trivial piece of work gets a plan before implementation. Every change gets a
 CHANGELOG entry with commits, verification and hardware status.

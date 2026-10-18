@@ -8,6 +8,20 @@ Merged the two repos into one, removed the gesture sensor and mouse actions, fix
 active-layer bug, and made the firmware build from paths with spaces.
 See [CHANGELOG](../traceability/CHANGELOG.md) CH-001 to CH-008.
 
+## 4. Command Center: desktop app over BLE and USB (priority since 2026-10-17)
+
+Replaces the WiFi AP plus on-device web portal. Plan: [2026-10-17-command-center](2026-10-17-command-center.md).
+R1.2–R1.4 wait until this is done; R1.4 (API safety) is largely covered, because the portal goes away.
+
+| ID | Item | Status |
+|----|------|--------|
+| R4.0 | Spike: reach the DeepDeck over BLE (while connected as a keyboard) and USB from Tauri | in progress |
+| R4.1 | Firmware config core (`config_api`, `config_task`, WiFi/BLE coexistence) | proposed |
+| R4.2 | Firmware transports: BLE GATT config service, UART0 framing | proposed |
+| R4.3 | Command Center app: Tauri, transport layer, Connect and WiFi pages | proposed |
+| R4.4 | Installers for Windows, macOS and Linux (CI) | proposed |
+| R4.5 | Remove web server, SPIFFS, AP mode; repartition | proposed |
+
 ## 1. Finish what is half-done
 
 | ID | Item | Status | Plan |
