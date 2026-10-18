@@ -9,9 +9,8 @@
     "lint": "ng lint",
     "e2e": "ng e2e",
     "build-prod": "ng build --configuration production --output-hashing none",
-    "build-deepdeck": "npm run build-prod && npm run compress-artifacts && npm run move-artifacts",
-    "compress-artifacts": "gzip-all \"dist/esp-frontend/*.{css,js}\" && rimraf dist/esp-frontend/*.js && rimraf dist/esp-frontend/*.css",
-    "move-artifacts": "mv .\\dist\\esp-frontend\\*.* .\\..\\firmware\\spiffs_image",
+    "build-deepdeck": "npm run build-prod && npm run deploy-to-firmware",
+    "deploy-to-firmware": "node scripts/deploy-to-firmware.js",
     "bundle-analyze": "ng build --prod --stats-json --output-hashing none && webpack-bundle-analyzer dist/esp-frontend/stats.json",
     "serve-artifactsgit": "lite-server --baseDir=\"dist/esp-frontend\""
   },
