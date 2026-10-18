@@ -4,6 +4,11 @@ Product and architecture decisions, newest first. A decision stays valid until a
 
 | ID | Date | Decision | Decided by |
 |----|------|----------|------------|
+| D-021 | 2026-10-18 | A deleted macro is emptied, not removed; `macros.create` assigns the keycode | Claude |
+| D-020 | 2026-10-18 | On a crash the firmware prints and reboots instead of halting in the GDB stub | Claude |
+| D-019 | 2026-10-18 | Firmware version 0.6.0 for the configuration core | Claude |
+| D-018 | 2026-10-18 | BLE and USB transports are built in Phase 1 (they were Phase 2) | Claude |
+| D-017 | 2026-10-18 | Extra app functions chosen by Claude, as the owner delegated: dashboard, active layer, WiFi scan, rename, backup/restore, USB log, restart | owner, Claude |
 | D-016 | 2026-10-17 | Install Rust and the VS Build Tools under `D:\DevTools` | owner |
 | D-015 | 2026-10-17 | BLE on Windows through our own WinRT module, not btleplug | Claude |
 | D-014 | 2026-10-17 | One JSON-per-line protocol mirroring the REST API, shared by BLE, USB and (temporarily) HTTP | Claude |
@@ -22,6 +27,14 @@ Product and architecture decisions, newest first. A decision stays valid until a
 | D-001 | 2026-10-16 | One repository for firmware and web, with both histories kept | owner |
 
 ## Details
+
+**D-021:** a macro's key code is its position (500 + index): removing one would renumber every later
+macro, and the keys that point at it.
+
+**D-020:** a frozen keyboard needs a replug and shows nothing. The crash is still printed on the USB log.
+
+**D-017:** the firmware side of these functions is in protocol v1. Backup and restore needs no firmware
+method: the app builds it from `layers.get` and `macros.list`.
 
 **D-015:** btleplug on Windows only knows devices it saw advertising, and discovers services uncached, which Windows refuses on a connected HID device. See the [spike results](../plans/2026-10-17-command-center-spike-results.md).
 

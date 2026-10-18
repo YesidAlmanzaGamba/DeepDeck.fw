@@ -16,9 +16,9 @@ R1.2–R1.4 wait until this is done; R1.4 (API safety) is largely covered, becau
 | ID | Item | Status |
 |----|------|--------|
 | R4.0 | Spike: reach the DeepDeck over BLE (while connected as a keyboard) and USB from Tauri | done: [results](2026-10-17-command-center-spike-results.md) |
-| R4.1 | Firmware config core (`config_api`, `config_task`, WiFi/BLE coexistence) | in progress: [plan](2026-10-18-command-center-phase1.md) |
-| R4.2 | Firmware transports: BLE GATT config service, UART0 framing | in progress (merged into Phase 1) |
-| R4.3 | Command Center app: Tauri, transport layer, Connect and WiFi pages | proposed |
+| R4.1 | Firmware config core (`config_api`, `config_task`, WiFi/BLE coexistence) | done: [plan](2026-10-18-command-center-phase1.md) |
+| R4.2 | Firmware transports: BLE GATT config service, UART0 framing | done (in Phase 1) |
+| R4.3 | Command Center app: Tauri, transport layer, Connect and WiFi pages, plus dashboard, active layer, rename, backup/restore, USB log, restart (D-017) | next |
 | R4.4 | Installers for Windows, macOS and Linux (CI) | proposed |
 | R4.5 | Remove web server, SPIFFS, AP mode; repartition | proposed |
 
@@ -29,7 +29,7 @@ R1.2–R1.4 wait until this is done; R1.4 (API safety) is largely covered, becau
 | R1.1 | Ship the current web app in the firmware SPIFFS image with one cross-platform command | done | [plan](2026-10-17-web-to-firmware-pipeline.md) |
 | R1.2 | Per-key LED "Color" tab in the web app: implement in firmware or remove | proposed | |
 | R1.3 | Knob macros use the hardcoded `macros[]` table instead of the user's macros | proposed | |
-| R1.4 | API safety: knob JSON arrays not bounds-checked, WiFi password logged, `Access-Control-Allow-Origin: *` | proposed | |
+| R1.4 | API safety: knob JSON arrays not bounds-checked, WiFi password logged, `Access-Control-Allow-Origin: *` | mostly done in Phase 1 (validation, no password log); CORS goes with the portal (R4.5) | |
 
 ## 2. Code health (no visible change)
 
@@ -37,7 +37,7 @@ R1.2–R1.4 wait until this is done; R1.4 (API safety) is largely covered, becau
 |----|------|--------|------|
 | R2.1 | Make `keypress_handles.c` and `keymap.c` real compilation units, instead of `.c` files `#include`d into `deepdeck_tasks.c` | proposed | |
 | R2.2 | Remove dead components: plugins (hardcoded WiFi credentials), MQTT, ESP-NOW | proposed | |
-| R2.3 | Document the REST API shared by firmware and web | proposed | |
+| R2.3 | Document the REST API shared by firmware and web | done: [protocol.md](../protocol.md) | |
 
 ## 3. Features (each needs its own plan)
 

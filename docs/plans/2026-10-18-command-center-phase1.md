@@ -1,6 +1,6 @@
 # Command Center, Phase 1: one configuration core over BLE, USB and HTTP
 
-- **Status:** in progress
+- **Status:** done (2026-10-18). See CHANGELOG CH-012 to CH-016; hardware checks left for the owner are listed there.
 - **Roadmap items:** R4.1, R4.2
 - **Areas:** firmware, tools
 

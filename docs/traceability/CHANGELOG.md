@@ -10,6 +10,11 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-016 | 2026-10-18 | Swap layers/macros under a lock; fix an NVS handle leaked on every layer write | firmware | abd1a59 | stress test, heap flat over 30 rounds | yes (automated) |
+| CH-015 | 2026-10-18 | Macro, LED, device and WiFi methods; all `/api` handlers become wrappers | firmware | 796b2d2 | selftest over USB+BLE, HTTP, wifi.scan, restart | yes (automated) |
+| CH-014 | 2026-10-18 | Layer methods in the configuration core; `layer.changed` events | firmware | 73a3266 | USB/BLE/HTTP, write round trip | yes (automated) |
+| CH-013 | 2026-10-18 | Config channel over BLE and USB, `device.info`, coexistence, reboot on panic, fw 0.6.0 | firmware, tools | e19647e | `device.info` over USB and BLE | yes (automated) |
+| CH-012 | 2026-10-18 | Protocol v1 (`docs/protocol.md`) and Phase 1 plan | docs | 0f5ae47 | n/a | n/a |
 | CH-011 | 2026-10-17 | Spike R4.0: BLE and USB config channel, firmware plus Tauri (branch `spike/command-center`) | both | 087ee6b, 650fc87, (spike app) | echo over BLE and USB from Python and Tauri | **yes** |
 | CH-010 | 2026-10-17 | Add CLAUDE.md, docs/plans, docs/traceability | docs | 91bfc61 | n/a | n/a |
 | CH-009 | 2026-10-17 | Ship the current web app in the firmware SPIFFS image | both | 60af76f | build, image contents | no |
@@ -23,6 +28,48 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-012 to CH-016: Command Center Phase 1 (configuration core)
+- **Why:** every configuration action lived in HTTP handlers, so only the web page could use it. The
+  app needs the same actions over BLE and USB. Plan:
+  [2026-10-18-command-center-phase1](../plans/2026-10-18-command-center-phase1.md); protocol:
+  [protocol.md](../protocol.md).
+- **What:**
+  - `config_api.c`: 20 methods, plus a dispatcher with one lock;
+  - `config_task.c`: the BLE and USB queue, and events;
+  - transports ported from the spike;
+  - `server.c` is now thin wrappers (1,740 lines down to 619);
+  - `layouts_lock`;
+  - `tools/cc-cli/cc_cli.py`.
+- **Bugs fixed on the way:**
+  - unchecked encoder maps (a memory overwrite) and NULL dereferences in the layer handlers;
+  - encoder actions were taken by JSON key order;
+  - every edit jumped to layer 0;
+  - macro delete did nothing, and `nvs_delete_macro` wrote into the layers namespace;
+  - the macro key range check was always true, and macro create trusted the client's keycode;
+  - LED saturation was validated on hue;
+  - the WiFi password was logged;
+  - leaks: `nvs_load_macros` (every update), `json_response` (every call), and an NVS handle on every
+    layer write;
+  - out-of-bounds layer index after deleting the active last layer;
+  - the stored BLE name was never used;
+  - `main.c` checked the wrong return value when reading the name.
+- **Settings:**
+  - WiFi/BLE coexistence on;
+  - print the crash and reboot (it used to halt in the GDB stub);
+  - firmware 0.6.0.
+- **Verified on the device (automated):**
+  - `cc_cli.py --usb COM3 --ble selftest`: 0 failures, identical results over both transports;
+  - HTTP endpoints, and the web page (layer list, edit, Save leaves the layer byte-identical);
+  - `wifi.scan` over BLE while on WiFi;
+  - restart and BLE reconnect;
+  - 10 rounds deleting the active layer;
+  - heap flat over 30 write rounds.
+- **Still to check by the owner:**
+  - `layer.changed` when pressing a layer key on the device (`cc_cli.py --ble watch`);
+  - `wifi.set` over BLE: the device joins the network and BLE comes back;
+  - power cycle keeps the configuration;
+  - keys type normally with this firmware.
 
 ### CH-010: Project documentation
 `CLAUDE.md` at the root: build setup, architecture traps, workflow. `docs/plans/`: template, roadmap

@@ -14,8 +14,32 @@ This repository is a fork that is being reworked as a whole. The upstream repos
 | `firmware/` | ESP-IDF project (C, FreeRTOS). `main/` = app, `components/` = drivers and libraries |
 | `firmware/spiffs_image/` | **Generated.** Built web app, packed into the `www_0` SPIFFS partition. Never edit by hand |
 | `web/` | Angular 15 configurator (`develop` branch of DeepDeck.Web, imported with `git subtree`) |
+| `docs/protocol.md` | **The configuration protocol** (methods, objects, events, BLE/USB/HTTP framing). Change it in the same commit as the code |
 | `docs/plans/` | Plans: one file per piece of work, written **before** implementing it |
 | `docs/traceability/` | `CHANGELOG.md` (every change, with commits and how it was verified) and `DECISIONS.md` |
+| `tools/cc-cli/cc_cli.py` | Protocol client: `--usb COM3` / `--ble`, `call <method> [json]`, `watch`, `selftest` |
+
+## Configuration core (Command Center, R4)
+
+The firmware is being configured more and more from a desktop app (Tauri, Phase 3) instead of the
+on-device web portal, which is removed in R4.5. Plan: `docs/plans/2026-10-17-command-center.md`.
+
+- `firmware/main/config_api.c` holds **every** configuration action as a method (`layers.update`,
+  `wifi.scan`, ...).
+  - BLE (`components/ble/config_service.c`), USB (`main/serial_transport.c`) and the `/api` HTTP
+    handlers (`main/server.c`, thin wrappers) all call it.
+  - Add new configuration features there, not in `server.c`.
+- `config_task.c` runs BLE and USB requests one at a time; never do the work in the BLE callback.
+  - Events (`layer.changed`, `wifi.changed`) go through `config_task_broadcast_event()`.
+  - Methods that restart the device use `defer()`, so the reply is sent first.
+- `key_layouts` and `user_macros` are swapped when the configuration changes. Read them under
+  `layouts_lock()`/`layouts_unlock()`, and write them only through the `nvs_*` load functions.
+- The BLE config service registers only **after** the HID service has started: Bluedroid builds one
+  attribute table at a time. Hosts paired with older firmware must re-pair once (Windows caches GATT).
+- Test after firmware changes: `python -I tools/cc-cli/cc_cli.py --usb COM3 --ble selftest` must give
+  0 failures. It restores everything it changes.
+- Free heap is about 38–39 KB with BLE, WiFi and the web server running. Check `device.info.heap` after
+  adding features, and look for leaks with repeated writes.
 
 ## Building
 
@@ -28,6 +52,11 @@ This repository is a fork that is being reworked as a whole. The upstream repos
   ESP-IDF extension 1.11 at 4.4.7. The extension derives the venv from `idf.pythonInstallPath`
   (`idf<IDF>_py<python>_env`), so that setting must be the **Python 3.8.7** base interpreter.
 - CLI: `idf.py -C firmware build`, `idf.py -C firmware -p COM3 flash monitor` (COM3 = CP210x on this PC).
+  To flash without reconfiguring, run `esptool.py --chip esp32 -p COM3 -b 460800 write_flash @flash_args`
+  from `firmware/build`. Close the VS Code serial monitor first, otherwise COM3 is locked.
+- `firmware/sdkconfig` is generated and git-ignored. When you change `sdkconfig.defaults`, either mirror
+  the change into `sdkconfig` (including the deprecated alias lines) or delete `sdkconfig`. Otherwise
+  the old value stays.
 - The project path contains a space (`D:\Personal Yesid\...`). ESP-IDF 4.4 breaks if a **project
   component has a `Kconfig` file** in such a path. Do not add `Kconfig` files under
   `firmware/components/`; use `#ifndef` defaults in the source instead.
