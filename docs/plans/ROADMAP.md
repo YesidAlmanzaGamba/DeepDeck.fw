@@ -18,16 +18,25 @@ R1.2–R1.4 wait until this is done; R1.4 (API safety) is largely covered, becau
 | R4.0 | Spike: reach the DeepDeck over BLE (while connected as a keyboard) and USB from Tauri | done: [results](2026-10-17-command-center-spike-results.md) |
 | R4.1 | Firmware config core (`config_api`, `config_task`, WiFi/BLE coexistence) | done: [plan](2026-10-18-command-center-phase1.md) |
 | R4.2 | Firmware transports: BLE GATT config service, UART0 framing | done (in Phase 1) |
-| R4.3 | Command Center app: Tauri, transport layer, Connect and WiFi pages, plus dashboard, active layer, rename, backup/restore, USB log, restart (D-017) | next |
+| R4.3 | Command Center app: Tauri, transport layer, Connect and WiFi pages, plus dashboard, active layer, rename, backup/restore, USB log, restart (D-017) | in progress: [plan](2026-10-18-app-lighting-oled.md) |
 | R4.4 | Installers for Windows, macOS and Linux (CI) | proposed |
 | R4.5 | Remove web server, SPIFFS, AP mode; repartition | proposed |
+
+## 5. Device experience (asked by the owner on 2026-10-18)
+
+Plan: [2026-10-18-app-lighting-oled](2026-10-18-app-lighting-oled.md)
+
+| ID | Item | Status |
+|----|------|--------|
+| R5.1 | OLED: layer name and status in the yellow band, 4x4 key grid; Device info pages in the settings menu | in progress |
+| R5.2 | Lighting v2: 11 effects, per-layer key colours, live preview from the app (replaces R1.2) | proposed |
 
 ## 1. Finish what is half-done
 
 | ID | Item | Status | Plan |
 |----|------|--------|------|
 | R1.1 | Ship the current web app in the firmware SPIFFS image with one cross-platform command | done | [plan](2026-10-17-web-to-firmware-pipeline.md) |
-| R1.2 | Per-key LED "Color" tab in the web app: implement in firmware or remove | proposed | |
+| R1.2 | Per-key LED "Color" tab in the web app: implement in firmware or remove | superseded by R5.2 | |
 | R1.3 | Knob macros use the hardcoded `macros[]` table instead of the user's macros | proposed | |
 | R1.4 | API safety: knob JSON arrays not bounds-checked, WiFi password logged, `Access-Control-Allow-Origin: *` | mostly done in Phase 1 (validation, no password log); CORS goes with the portal (R4.5) | |
 
