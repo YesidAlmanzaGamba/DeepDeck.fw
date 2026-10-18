@@ -1,62 +1,29 @@
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { AuthService } from 'src/app/core/services/auth.service';
-import { ApiService } from 'src/app/core/services/api/api.service';
+import { DeviceService, LinkStatus } from 'src/app/core/services/device/device.service';
 import { SidebarService } from 'src/app/shared/services/sidebar.service';
-import { throwError } from 'rxjs';
-import {catchError, retry} from 'rxjs/operators';
 
+/** Top bar: menu toggle, logo, and the link to the DeepDeck (click to go to Connect). */
 @Component({
   selector: 'app-header',
   templateUrl: './header.component.html',
-  styleUrls: ['./header.component.scss']
+  styleUrls: ['./header.component.scss'],
 })
-export class HeaderComponent implements OnInit {
+export class HeaderComponent implements OnInit, OnDestroy {
+  status: LinkStatus = { connected: false };
+  private sub: Subscription;
 
-  path: string;
-  responsiveWatcher: Subscription;
-  topGap = 56;
-  username: any = "admin";
-  
-  constructor(
-    private route: Router,
-    public authService: AuthService,
-    public apiService: ApiService,
-    private sidebarService: SidebarService
-  ) {
-    this.route.events.subscribe((val) => {
-      this.path = this.route.url.split('?')[0];
-    });
-    // this.ipAddress =  localStorage.getItem('ipAddress');
-  }
-
+  constructor(private device: DeviceService, private sidebarService: SidebarService) {}
 
   ngOnInit(): void {
-    /*this.authService.getCurrentUserData(false)
-    .subscribe(
-      value => this.username = value.username
-    );*/
-    
+    this.sub = this.device.status$.subscribe((s) => (this.status = s));
+  }
+
+  ngOnDestroy(): void {
+    this.sub?.unsubscribe();
   }
 
   toggleSideNav() {
     this.sidebarService.toggle();
   }
-
-  logout(): any {
-    console.log("Salir...")
-    localStorage.removeItem('current_user');
-    localStorage.removeItem('current_config');
-    this.apiService.cleanData();
-    this.authService.logout();
-    this.route.navigateByUrl('/');
-    
-  }
-
-  get isLoggedIn(): any {
-    return this.authService.isLoggedIn();
-  } 
-  
-
 }

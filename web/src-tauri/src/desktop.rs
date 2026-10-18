@@ -69,6 +69,9 @@ pub fn save_settings(app: &AppHandle, settings: &Settings) -> Result<(), String>
 pub fn show_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.unminimize();
+        if !window.is_visible().unwrap_or(false) {
+            let _ = window.maximize(); // the app uses the whole screen when it opens
+        }
         let _ = window.show();
         let _ = window.set_focus();
     }

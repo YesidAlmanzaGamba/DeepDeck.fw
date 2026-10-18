@@ -9,12 +9,12 @@ export class SidebarService {
   private sidebarStateChanged$ = new BehaviorSubject<string>(this.sidebarState);
   public sidebarStateObservable$ = this.sidebarStateChanged$.asObservable();
 
-  constructor() {
-    this.sidebarStateChanged$.next('open');
+  toggle() {
+    this.set(this.sidebarState === 'open' ? 'close' : 'open');
   }
 
-  toggle() {
-    this.sidebarState = this.sidebarState === 'open' ? 'close' : 'open';
+  set(state: 'open' | 'close') {
+    this.sidebarState = state;
     this.sidebarStateChanged$.next(this.sidebarState);
   }
 }

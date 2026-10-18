@@ -1,9 +1,12 @@
-<app-header></app-header>
-<mat-sidenav-container>
-    <mat-sidenav mode="side" opened="true" style="min-width:60px; background: #F3F3F3;" autosize fixedTopGap="56">
-        <app-sidenav></app-sidenav>
-    </mat-sidenav>
-    <mat-sidenav-content [ngStyle]="stateBar?{'margin-left': '201px'} : {'margin-left': '50px'}">
-        <router-outlet></router-outlet>
-    </mat-sidenav-content>
-</mat-sidenav-container>
+<!-- App shell: header on top, then the menu and the page side by side; only the page scrolls -->
+<div class="shell">
+  <app-header class="shell-header"></app-header>
+  <div class="shell-body">
+    <nav class="shell-nav" [class.collapsed]="!stateBar">
+      <app-sidenav></app-sidenav>
+    </nav>
+    <main class="shell-main">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

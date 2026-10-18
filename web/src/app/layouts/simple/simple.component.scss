@@ -1,19 +1,32 @@
-.dsd-logo {
-    // height: 60%;
-    height: 50px;
-    @media screen and (max-width: 599px) {
-        height: 40px !important;
-    }
+:host { display: block; height: 100vh; }
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #222222;
 }
 
-.mat-toolbar-row,
-.mat-toolbar-single-row {
-    height: 80px !important;
-    @media screen and (max-width: 599px) {
-        height: 64px !important;
-    }
+.shell-header { flex: 0 0 auto; display: block; }
+
+.shell-body {
+  flex: 1 1 auto;
+  min-height: 0; // lets the children scroll instead of growing the page
+  display: flex;
 }
 
-.full-width-dialog .mat-dialog-container {
-    max-width: 100vw !important;
+.shell-nav {
+  flex: 0 0 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #1c1c1e;
+  border-right: 1px solid #2f2f33;
+}
+
+.shell-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+  background: #222222;
+  color: #fff;
 }

@@ -1,8 +1,11 @@
 // Shared look of the Command Center pages (connect, dashboard, lighting, wifi, device, log)
 .dd-page {
-  padding: 24px 32px;
+  padding: 22px 28px 40px;
   color: #ddd;
-  max-width: 1100px;
+  max-width: 1500px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  @media (max-width: 800px) { padding: 14px 14px 30px; }
 
   h2 { color: #dc9f10; margin: 0 0 16px; }
   h3 { color: #dc9f10; margin: 0; }
@@ -54,7 +57,7 @@
 
 .dd-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px;
   margin-bottom: 12px;
   .dd-card { margin: 0; }

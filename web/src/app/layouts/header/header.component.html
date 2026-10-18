@@ -1,18 +1,11 @@
-<mat-toolbar color="primary">    
-    <img class="icon-dsd" src="assets/logo/logo.png" alt="">
-    <button mat-icon-button (click)="toggleSideNav()">
-    <mat-icon style="color: #fff !important;">menu</mat-icon>
+<header class="bar">
+  <button mat-icon-button (click)="toggleSideNav()" title="Show or hide the menu labels">
+    <mat-icon>menu</mat-icon>
   </button>
-    <span class="example-spacer"></span>
- 
-  
-    <!-- <button mat-icon-button class="example-icon favorite-icon" aria-label="Example icon-button with heart icon">
-    <mat-icon>notification_important</mat-icon>
-  </button>
-    <button mat-icon-button class="example-icon" aria-label="Example icon-button with share icon">
-    <mat-icon>account_circle</mat-icon>
-  </button> {{username}}
-    <a href="" (click)="logout()" style="margin-left: 10px; margin-top: 10px;"><span class="material-icons">
-      exit_to_app
-      </span></a> -->
-</mat-toolbar>
+  <img class="logo" src="assets/logo/logo.png" alt="DeepDeck">
+  <span class="spacer"></span>
+  <a class="link" [routerLink]="['/connect']" [class.ok]="status.connected" [title]="status.connected ? 'Connected' : (status.reason || 'Not connected')">
+    <mat-icon>{{ status.connected ? (status.kind === 'usb' ? 'usb' : 'bluetooth_connected') : 'link_off' }}</mat-icon>
+    <span class="text">{{ status.connected ? status.name : 'Not connected' }}</span>
+  </a>
+</header>

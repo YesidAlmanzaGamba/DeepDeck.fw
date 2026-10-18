@@ -1,16 +1,31 @@
-.icon-dsd {
-    width: 80px;
-    margin-top: 5px;
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 14px 0 6px;
+  background: #1c1c1e;
+  border-bottom: 1px solid #2f2f33;
 }
 
-.example-spacer {
-    flex: 1 1 auto;
+.logo { height: 22px; }
+.spacer { flex: 1; }
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1px solid #4a4a50;
+  border-radius: 16px;
+  color: #bbb;
+  text-decoration: none;
+  font-size: 13px;
+  &.ok { border-color: #4f8f4f; color: #cfe9cf; }
+  &:hover { border-color: #dc9f10; }
+  .mat-icon { font-size: 18px; width: 18px; height: 18px; }
 }
 
-.mat-toolbar.mat-primary {    
-    background: #222222 !important;
-    color: #dc9f10 !important;
+@media (max-width: 700px) {
+  .link .text { display: none; }
 }
-
-.mat-toolbar {
-    height: 95px !important;}
