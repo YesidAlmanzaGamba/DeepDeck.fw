@@ -24,6 +24,7 @@
 #include <assert.h>
 
 #include "oled_tasks.h"
+#include "nvs_funcs.h"
 
 #include <driver/gpio.h>
 #include <driver/spi_master.h>
@@ -82,6 +83,9 @@ void update_oled(void)
 
 	if (xQueueReceive(layer_recieve_q, &curr_layout, (TickType_t)0))
 	{
+		layouts_lock(); // key_layouts may be swapped by a configuration change
+		if (curr_layout >= layers_num)
+			curr_layout = 0;
 
 		erase_area(0, 13, 128, 22);
 		u8g2_SetFont(&u8g2, u8g2_font_courB18_tf);
@@ -96,6 +100,7 @@ void update_oled(void)
 				u8g2_DrawStr(&u8g2, j * 32, 42 + i * 7, key_layouts[curr_layout].key_map_names[i][j]);
 			}
 		}
+		layouts_unlock();
 
 		u8g2_SendBuffer(&u8g2);
 	}
@@ -173,6 +178,9 @@ void ble_connected_oled(void)
 	u8g2_SetFont(&u8g2, u8g2_font_5x7_tf);
 	u8g2_DrawStr(&u8g2, 40 + offset_x_batt, 8 + offset_y_batt, current_ip);
 
+	layouts_lock();
+	if (curr_layout >= layers_num)
+		curr_layout = 0;
 	u8g2_SetFont(&u8g2, u8g2_font_courB18_tf);
 	u8g2_DrawStr(&u8g2, 0, 33, key_layouts[curr_layout].name);
 
@@ -184,6 +192,7 @@ void ble_connected_oled(void)
 			u8g2_DrawStr(&u8g2, j * 32, 42 + i * 7, key_layouts[curr_layout].key_map_names[i][j]);
 		}
 	}
+	layouts_unlock();
 
 	//	if(CHECK_BIT(curr_led,0)!=0){
 	//		u8g2_SetFont(&u8g2, u8g2_font_5x7_tf );

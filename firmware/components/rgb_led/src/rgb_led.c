@@ -211,6 +211,7 @@ void key_led_modes(void)
             {
                 dumy = 0;
 
+                layouts_lock(); // key_layouts may be swapped by a configuration change
                 for (int index = 0; index < MATRIX_ROWS; ++index)
                 {
                     for (int index_col = 0; index_col < MATRIX_COLS; index_col++)
@@ -231,6 +232,7 @@ void key_led_modes(void)
                         dumy++;
                     }
                 }
+                layouts_unlock();
                 // Flush RGB values to LEDs
                 ESP_ERROR_CHECK(rgb_key->refresh(rgb_key, 100));
             }

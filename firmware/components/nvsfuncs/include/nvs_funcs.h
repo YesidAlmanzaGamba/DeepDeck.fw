@@ -105,6 +105,10 @@ esp_err_t nvs_delete_macro(dd_macros macro);
 esp_err_t nvs_restore_default_macros(void);
 
 
+/** @brief Hold while reading key_layouts or user_macros: configuration changes swap these arrays. */
+void layouts_lock(void);
+void layouts_unlock(void);
+
 esp_err_t nvs_save_current_layer(uint8_t layer);
 uint8_t nvs_load_current_layer(void);
 void nvs_schedule_current_layer_save(uint8_t layer);

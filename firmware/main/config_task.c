@@ -17,6 +17,7 @@
 #include "esp_netif.h"
 #include "keyboard_config.h"
 #include "nvs_keymaps.h"
+#include "nvs_funcs.h"
 #include "config_service.h"
 #include "serial_transport.h"
 #include "config_api.h"
@@ -123,12 +124,14 @@ void config_task_broadcast_event(const char *event, cJSON *data)
 void config_task_layer_changed(bool hold)
 {
 	cJSON *data = cJSON_CreateObject();
+	layouts_lock();
 	cJSON_AddNumberToObject(data, "index", current_layout);
 	if (current_layout < layers_num)
 	{
 		cJSON_AddStringToObject(data, "uuid", key_layouts[current_layout].uuid_str);
 		cJSON_AddStringToObject(data, "name", key_layouts[current_layout].name);
 	}
+	layouts_unlock();
 	cJSON_AddBoolToObject(data, "hold", hold);
 	config_task_broadcast_event("layer.changed", data);
 }

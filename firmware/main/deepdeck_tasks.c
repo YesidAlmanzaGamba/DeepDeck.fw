@@ -136,8 +136,10 @@ void key_reports(void *pvParameters)
 
 	while (1)
 	{
+		layouts_lock(); // the configuration core may swap key_layouts at any time
 		memcpy(report_state, check_key_state(&key_layouts[current_layout]),
 			   sizeof report_state);
+		layouts_unlock();
 
 		// Do not send anything if queues are uninitialized
 		if (keyboard_q == NULL)
@@ -260,8 +262,10 @@ void encoder_report(void *pvParameters)
 			}
 			else
 			{
+				layouts_lock();
 				encoder_command(encoder1_status,
 								key_layouts[current_layout].left_encoder_map);
+				layouts_unlock();
 			}
 			past_encoder1_state = encoder1_status;
 		}
@@ -281,8 +285,10 @@ void encoder_report(void *pvParameters)
 			}
 			else
 			{
+				layouts_lock();
 				encoder_command(encoder2_status,
 								key_layouts[current_layout].right_encoder_map);
+				layouts_unlock();
 			}
 
 			past_encoder2_state = encoder2_status;

@@ -42,6 +42,7 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "nvs_flash.h"
@@ -81,6 +82,23 @@ dd_layer *key_layouts;
 dd_macros *user_macros;
 uint8_t layers_num = 0;
 int total_macros = 0;
+
+/* key_layouts and user_macros are replaced when the configuration changes, while the key, encoder,
+ * OLED and LED tasks read them. Writers build the new array first and swap the pointer under this
+ * lock; readers hold it while they use an entry. Recursive: a reader may change the layer. */
+static SemaphoreHandle_t layouts_mutex = NULL;
+
+void layouts_lock(void)
+{
+	if (layouts_mutex == NULL)
+		layouts_mutex = xSemaphoreCreateRecursiveMutex(); // first call happens at boot, before the tasks
+	xSemaphoreTakeRecursive(layouts_mutex, portMAX_DELAY);
+}
+
+void layouts_unlock(void)
+{
+	xSemaphoreGiveRecursive(layouts_mutex);
+}
 
 static esp_timer_handle_t current_layer_timer = NULL;
 static volatile uint8_t pending_layer = 0;
@@ -344,6 +362,8 @@ esp_err_t nvs_create_new_layer(dd_layer layer)
 	if (error != ESP_OK)
 	{
 		ESP_LOGE("TAG", "Error (%s) READING KEY!: \n", esp_err_to_name(error));
+		nvs_close(nvs_handle);
+		free(temp_layout);
 		return error;
 	}
 
@@ -351,6 +371,8 @@ esp_err_t nvs_create_new_layer(dd_layer layer)
 
 	if (layer_num > MAX_LAYOUT_NUMBER)
 	{
+		nvs_close(nvs_handle);
+		free(temp_layout);
 		return ESP_ERR_NO_MEM;
 	}
 	// ESP_LOGI("TAG", "New layer QTY %d", layer_num);
@@ -376,6 +398,7 @@ esp_err_t nvs_create_new_layer(dd_layer layer)
 			count_active++;
 		}
 	}
+	nvs_close(nvs_handle); // opened above to read the layer count
 	ESP_ERROR_CHECK(nvs_open(LAYER_NAMESPACE, NVS_READWRITE, &nvs_handle));
 	ESP_ERROR_CHECK(nvs_erase_all(nvs_handle));
 	ESP_ERROR_CHECK(nvs_commit(nvs_handle));
@@ -482,6 +505,8 @@ esp_err_t nvs_update_layout_position(void)
 	if (error != ESP_OK)
 	{
 		ESP_LOGE("TAG", "Error (%s) READING KEY!: \n", esp_err_to_name(error));
+		nvs_close(nvs_handle);
+		free(temp_layout);
 		return ESP_FAIL;
 	}
 
@@ -504,6 +529,7 @@ esp_err_t nvs_update_layout_position(void)
 			count_active++;
 		}
 	}
+	nvs_close(nvs_handle); // opened above to read the layer count
 	ESP_ERROR_CHECK(nvs_open(LAYER_NAMESPACE, NVS_READWRITE, &nvs_handle));
 	ESP_ERROR_CHECK(nvs_erase_all(nvs_handle));
 	ESP_ERROR_CHECK(nvs_commit(nvs_handle));
@@ -536,11 +562,18 @@ void nvs_load_layouts(void)
 {
 
 	ESP_LOGI("NVS_TAG", "LOADING LAYOUTS");
-	layers_num = nvs_read_num_layers();
-	free(key_layouts);
-	key_layouts = malloc(layers_num * sizeof(dd_layer));
+	uint8_t num = nvs_read_num_layers();
+	dd_layer *fresh = malloc(num * sizeof(dd_layer));
+	nvs_read_layers(fresh);
 
-	nvs_read_layers(key_layouts);
+	layouts_lock();
+	dd_layer *old = key_layouts;
+	key_layouts = fresh;
+	layers_num = num;
+	if (current_layout >= layers_num)
+		current_layout = 0; // a deleted layer must not stay selected, readers would index past the end
+	layouts_unlock();
+	free(old);
 	nvs_check_memory_status();
 
 	for (int i = 0; i < layers_num; i++)
@@ -614,18 +647,22 @@ void nvs_load_macros(void)
 		break;
 	}
 
-	free(user_macros); // reloaded after every update: the old array used to leak
-	user_macros = malloc((macro_num + 1) * sizeof(dd_macros));
+	dd_macros *fresh = malloc((macro_num + 1) * sizeof(dd_macros));
 	for (int i = 0; i < macro_num; i++)
 	{
 		sprintf(macro_key, "macro_%hu", (i + 1));
-		res = nvs_get_blob(nvs_handle, macro_key, (void *)&user_macros[i], &dd_macros_size);
+		res = nvs_get_blob(nvs_handle, macro_key, (void *)&fresh[i], &dd_macros_size);
 		if (res != ESP_OK)
 		{
 			ESP_LOGE("++", "Error (%s) reading Macro %s!\n", esp_err_to_name(res), macro_key);
 		}
 	}
+	layouts_lock();
+	dd_macros *old = user_macros; // the previous array used to leak on every update
+	user_macros = fresh;
 	total_macros = macro_num;
+	layouts_unlock();
+	free(old);
 	nvs_close(nvs_handle);
 	nvs_check_memory_status();
 	nvs_macros_state();
@@ -676,7 +713,6 @@ esp_err_t nvs_create_new_macro(dd_macros macro)
 		return ESP_ERR_NVS_NOT_ENOUGH_SPACE;
 	}
 	dd_macros *temp_macro = malloc((macro_num + 1) * sizeof(dd_macros));
-	user_macros = realloc(user_macros, (macro_num + 1) * sizeof(dd_macros));
 
 	size_t dd_macros_size = sizeof(dd_macros);
 
@@ -711,12 +747,11 @@ esp_err_t nvs_create_new_macro(dd_macros macro)
 		}
 		// ESP_LOGI("-", "%s  Writed", macro_key);
 		// ESP_ERROR_CHECK(nvs_commit(nvs_handle));
-		user_macros[i] = temp_macro[i];
 	}
 	ESP_ERROR_CHECK(nvs_commit(nvs_handle));
-	total_macros = macro_num;
 	nvs_close(nvs_handle);
 	free(temp_macro);
+	nvs_load_macros(); // swaps user_macros under the lock
 	return ESP_OK;
 }
 
