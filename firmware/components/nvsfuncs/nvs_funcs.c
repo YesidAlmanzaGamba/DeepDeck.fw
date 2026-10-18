@@ -860,7 +860,15 @@ esp_err_t nvs_save_led_mode(rgb_mode_t led_mode)
 		nvs_set_u8(nvs_handle, "red", led_mode.rgb[0]);
 		nvs_set_u8(nvs_handle, "green", led_mode.rgb[1]);
 		nvs_set_u8(nvs_handle, "blue", led_mode.rgb[2]);
+		// lighting v2
+		nvs_set_u8(nvs_handle, "c2r", led_mode.rgb2[0]);
+		nvs_set_u8(nvs_handle, "c2g", led_mode.rgb2[1]);
+		nvs_set_u8(nvs_handle, "c2b", led_mode.rgb2[2]);
+		nvs_set_u8(nvs_handle, "bright", led_mode.brightness);
+		nvs_set_u8(nvs_handle, "react", led_mode.reactive);
+		error = nvs_commit(nvs_handle); // was missing: the settings were not guaranteed to persist
 		nvs_close(nvs_handle);
+		return error;
 	}
 	else
 	{
@@ -888,6 +896,15 @@ esp_err_t nvs_load_led_mode(rgb_mode_t *led_mode)
 		nvs_get_u8(nvs_handle, "red", &led_mode->rgb[0]);
 		nvs_get_u8(nvs_handle, "green", &led_mode->rgb[1]);
 		nvs_get_u8(nvs_handle, "blue", &led_mode->rgb[2]);
+		// lighting v2; settings stored by older firmware have none of these keys
+		led_mode->rgb2[0] = led_mode->rgb2[1] = led_mode->rgb2[2] = 255;
+		nvs_get_u8(nvs_handle, "c2r", &led_mode->rgb2[0]);
+		nvs_get_u8(nvs_handle, "c2g", &led_mode->rgb2[1]);
+		nvs_get_u8(nvs_handle, "c2b", &led_mode->rgb2[2]);
+		if (nvs_get_u8(nvs_handle, "bright", &led_mode->brightness) != ESP_OK)
+			led_mode->brightness = led_mode->V > 40 ? led_mode->V : 128;
+		led_mode->reactive = 0;
+		nvs_get_u8(nvs_handle, "react", &led_mode->reactive);
 		nvs_close(nvs_handle);
 	}
 	else

@@ -110,6 +110,12 @@ uint8_t menu_rgb_mode_1(void);
 uint8_t menu_rgb_mode_2(void);
 uint8_t menu_rgb_mode_3(void);
 uint8_t menu_rgb_mode_4(void);
+uint8_t menu_rgb_mode_5(void);
+uint8_t menu_rgb_mode_6(void);
+uint8_t menu_rgb_mode_7(void);
+uint8_t menu_rgb_mode_8(void);
+uint8_t menu_rgb_mode_9(void);
+uint8_t menu_rgb_mode_10(void);
 
 menu_t menu_main; 
 extern menu_item_t m_main_array[];

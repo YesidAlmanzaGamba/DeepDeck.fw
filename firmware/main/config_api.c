@@ -346,9 +346,7 @@ static bool layer_from_json(cJSON *json, dd_layer *layer, config_error_t *err)
 static void refresh_leds(void)
 {
 #ifdef RGB_LEDS
-	rgb_mode_t led_mode;
-	nvs_load_led_mode(&led_mode);
-	xQueueSend(keyled_q, &led_mode, 0);
+	rgb_led_layer_changed();
 #endif
 }
 
@@ -453,6 +451,7 @@ static cJSON *m_layers_delete(cJSON *params, config_error_t *err)
 
 	char active_uuid[SHORT_UUID_STR_LEN];
 	current_uuid(active_uuid);
+	rgb_layer_colors_erase(key_layouts[pos].uuid_str); // its key colours go with it
 	if (nvs_delete_layer(pos) != ESP_OK)
 		return fail(err, CONFIG_ERR_INTERNAL, "could not delete the layer");
 	reselect_layer(active_uuid);
@@ -461,6 +460,7 @@ static cJSON *m_layers_delete(cJSON *params, config_error_t *err)
 
 static cJSON *m_layers_restore(cJSON *params, config_error_t *err)
 {
+	rgb_layer_colors_erase_all();
 	if (nvs_restore_default_layers() != ESP_OK || nvs_restore_default_macros() != ESP_OK)
 		return fail(err, CONFIG_ERR_INTERNAL, "could not restore the defaults");
 	set_current_layout(0);
@@ -600,19 +600,45 @@ static cJSON *m_macros_restore(cJSON *params, config_error_t *err)
 }
 
 // ---------------------------------------------------------------------------------------------
-// led.*
+// led.*  Lighting settings (effect, colours, brightness...) and per-layer key colours
+
+static cJSON *rgb_array(const uint8_t c[3])
+{
+	cJSON *a = cJSON_CreateArray();
+	for (int i = 0; i < 3; i++)
+		cJSON_AddItemToArray(a, cJSON_CreateNumber(c[i]));
+	return a;
+}
+
+static bool read_rgb(cJSON *item, uint8_t out[3])
+{
+	if (!cJSON_IsArray(item) || cJSON_GetArraySize(item) != 3)
+		return false;
+	for (int i = 0; i < 3; i++)
+	{
+		cJSON *c = cJSON_GetArrayItem(item, i);
+		if (!cJSON_IsNumber(c) || c->valueint < 0 || c->valueint > 255)
+			return false;
+		out[i] = c->valueint;
+	}
+	return true;
+}
 
 static cJSON *led_to_json(const rgb_mode_t *mode)
 {
 	cJSON *json = cJSON_CreateObject();
+	cJSON_AddNumberToObject(json, "effect", mode->mode);
+	cJSON_AddNumberToObject(json, "brightness", mode->brightness);
+	cJSON_AddNumberToObject(json, "speed", mode->speed);
+	cJSON_AddItemToObject(json, "color1", rgb_array(mode->rgb));
+	cJSON_AddItemToObject(json, "color2", rgb_array(mode->rgb2));
+	cJSON_AddBoolToObject(json, "reactive", mode->reactive);
+	// legacy fields read by the web page
 	cJSON_AddNumberToObject(json, "mode", mode->mode);
 	cJSON_AddNumberToObject(json, "H", mode->H);
 	cJSON_AddNumberToObject(json, "S", mode->S);
 	cJSON_AddNumberToObject(json, "V", mode->V);
-	cJSON_AddNumberToObject(json, "speed", mode->speed);
-	cJSON *rgb = cJSON_AddArrayToObject(json, "rgb");
-	for (int i = 0; i < 3; i++)
-		cJSON_AddItemToArray(rgb, cJSON_CreateNumber(mode->rgb[i]));
+	cJSON_AddItemToObject(json, "rgb", rgb_array(mode->rgb));
 	return json;
 }
 
@@ -632,6 +658,13 @@ static bool read_byte(cJSON *params, const char *key, uint8_t *out, config_error
 	return true;
 }
 
+// `save` is optional and true by default; false = live preview, nothing written to flash
+static bool wants_save(cJSON *params)
+{
+	cJSON *save = cJSON_GetObjectItem(params, "save");
+	return save == NULL || cJSON_IsTrue(save);
+}
+
 static cJSON *m_led_get(cJSON *params, config_error_t *err)
 {
 	rgb_mode_t mode = {0};
@@ -643,30 +676,123 @@ static cJSON *m_led_set(cJSON *params, config_error_t *err)
 {
 	rgb_mode_t mode = {0};
 	nvs_load_led_mode(&mode); // fields left out keep their stored value
-	if (!read_byte(params, "mode", &mode.mode, err) || !read_byte(params, "H", &mode.H, err) ||
-		!read_byte(params, "S", &mode.S, err) || !read_byte(params, "V", &mode.V, err) ||
-		!read_byte(params, "speed", &mode.speed, err))
+	if (!read_byte(params, "mode", &mode.mode, err) || !read_byte(params, "effect", &mode.mode, err) ||
+		!read_byte(params, "H", &mode.H, err) || !read_byte(params, "S", &mode.S, err) ||
+		!read_byte(params, "V", &mode.V, err) || !read_byte(params, "speed", &mode.speed, err) ||
+		!read_byte(params, "brightness", &mode.brightness, err))
 		return NULL;
-	if (mode.mode > 5)
-		return fail(err, CONFIG_ERR_BAD_REQUEST, "mode: 0-5");
+	if (mode.mode >= LED_EFFECT_COUNT)
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "effect: see led.effects");
+	// the web page only knows V: use it as the brightness when no brightness is given
+	if (cJSON_GetObjectItem(params, "V") != NULL && cJSON_GetObjectItem(params, "brightness") == NULL)
+		mode.brightness = mode.V;
 
-	cJSON *rgb = cJSON_GetObjectItem(params, "rgb");
-	if (rgb != NULL)
-	{
-		if (!cJSON_IsArray(rgb) || cJSON_GetArraySize(rgb) != 3)
-			return fail(err, CONFIG_ERR_BAD_REQUEST, "rgb: [r,g,b]");
-		for (int i = 0; i < 3; i++)
-		{
-			cJSON *c = cJSON_GetArrayItem(rgb, i);
-			if (!cJSON_IsNumber(c) || c->valueint < 0 || c->valueint > 255)
-				return fail(err, CONFIG_ERR_BAD_REQUEST, "rgb: 0-255");
-			mode.rgb[i] = c->valueint;
-		}
-	}
-	if (nvs_save_led_mode(mode) != ESP_OK)
+	cJSON *c1 = cJSON_GetObjectItem(params, "color1");
+	if (c1 == NULL)
+		c1 = cJSON_GetObjectItem(params, "rgb");
+	cJSON *c2 = cJSON_GetObjectItem(params, "color2");
+	if ((c1 != NULL && !read_rgb(c1, mode.rgb)) || (c2 != NULL && !read_rgb(c2, mode.rgb2)))
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "colour: [r,g,b] with 0-255");
+	cJSON *reactive = cJSON_GetObjectItem(params, "reactive");
+	if (reactive != NULL)
+		mode.reactive = cJSON_IsTrue(reactive);
+
+	if (wants_save(params) && nvs_save_led_mode(mode) != ESP_OK)
 		return fail(err, CONFIG_ERR_INTERNAL, "could not store the LED mode");
 #ifdef RGB_LEDS
-	xQueueSend(keyled_q, &mode, 0);
+	rgb_led_apply(&mode);
+#endif
+	return cJSON_CreateObject();
+}
+
+static cJSON *m_led_effects(cJSON *params, config_error_t *err)
+{
+	cJSON *result = cJSON_CreateObject();
+	cJSON *list = cJSON_AddArrayToObject(result, "effects");
+	for (int i = 0; i < LED_EFFECT_COUNT; i++)
+	{
+		const led_effect_info_t *info = rgb_led_effect_info(i);
+		cJSON *e = cJSON_CreateObject();
+		cJSON_AddNumberToObject(e, "id", i);
+		cJSON_AddStringToObject(e, "name", info->name);
+		cJSON *uses = cJSON_AddArrayToObject(e, "uses");
+		char buf[48];
+		strlcpy(buf, info->uses, sizeof(buf));
+		for (char *tok = strtok(buf, ","); tok != NULL; tok = strtok(NULL, ","))
+			cJSON_AddItemToArray(uses, cJSON_CreateString(tok));
+		cJSON_AddItemToArray(list, e);
+	}
+	return result;
+}
+
+static bool load_layer_colors(int pos, rgb_layer_colors_t *colors)
+{
+	rgb_mode_t mode = {0};
+	nvs_load_led_mode(&mode);
+	return rgb_layer_colors_load(key_layouts[pos].uuid_str, pos, (const uint16_t(*)[4])key_layouts[pos].key_map, &mode, colors);
+}
+
+static cJSON *m_led_keys_get(cJSON *params, config_error_t *err)
+{
+	int pos;
+	cJSON *uuid = get_uuid_param(params, err, &pos);
+	if (uuid == NULL)
+		return NULL;
+	rgb_layer_colors_t colors;
+	bool custom = load_layer_colors(pos, &colors);
+
+	cJSON *result = cJSON_CreateObject();
+	cJSON_AddStringToObject(result, "uuid", key_layouts[pos].uuid_str);
+	cJSON *keys = cJSON_AddArrayToObject(result, "keys");
+	for (int i = 0; i < RGB_LED_KEYBOARD_NUMBER; i++)
+		cJSON_AddItemToArray(keys, rgb_array(colors.keys[i]));
+	cJSON_AddItemToObject(result, "layer", rgb_array(colors.layer));
+	cJSON_AddBoolToObject(result, "custom", custom);
+	return result;
+}
+
+static cJSON *m_led_keys_set(cJSON *params, config_error_t *err)
+{
+	int pos;
+	cJSON *uuid = get_uuid_param(params, err, &pos);
+	if (uuid == NULL)
+		return NULL;
+	rgb_layer_colors_t colors;
+	load_layer_colors(pos, &colors); // fields left out keep their current value
+
+	cJSON *keys = cJSON_GetObjectItem(params, "keys");
+	if (keys != NULL)
+	{
+		if (!cJSON_IsArray(keys) || cJSON_GetArraySize(keys) != RGB_LED_KEYBOARD_NUMBER)
+			return fail(err, CONFIG_ERR_BAD_REQUEST, "keys: 16 colours [r,g,b]");
+		for (int i = 0; i < RGB_LED_KEYBOARD_NUMBER; i++)
+		{
+			if (!read_rgb(cJSON_GetArrayItem(keys, i), colors.keys[i]))
+				return fail(err, CONFIG_ERR_BAD_REQUEST, "keys: 16 colours [r,g,b]");
+		}
+	}
+	cJSON *layer = cJSON_GetObjectItem(params, "layer");
+	if (layer != NULL && !read_rgb(layer, colors.layer))
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "layer: [r,g,b]");
+
+	if (wants_save(params) && rgb_layer_colors_save(key_layouts[pos].uuid_str, &colors) != ESP_OK)
+		return fail(err, CONFIG_ERR_INTERNAL, "could not store the key colours");
+#ifdef RGB_LEDS
+	rgb_led_preview_layer_colors(key_layouts[pos].uuid_str, &colors);
+#endif
+	return cJSON_CreateObject();
+}
+
+static cJSON *m_led_keys_reset(cJSON *params, config_error_t *err)
+{
+	int pos;
+	cJSON *uuid = get_uuid_param(params, err, &pos);
+	if (uuid == NULL)
+		return NULL;
+	if (rgb_layer_colors_erase(key_layouts[pos].uuid_str) != ESP_OK)
+		return fail(err, CONFIG_ERR_INTERNAL, "could not reset the key colours");
+#ifdef RGB_LEDS
+	rgb_led_layer_changed();
 #endif
 	return cJSON_CreateObject();
 }
@@ -842,6 +968,10 @@ static const config_method_t methods[] = {
 	{"macros.restore", m_macros_restore},
 	{"led.get", m_led_get},
 	{"led.set", m_led_set},
+	{"led.effects", m_led_effects},
+	{"led.keys.get", m_led_keys_get},
+	{"led.keys.set", m_led_keys_set},
+	{"led.keys.reset", m_led_keys_reset},
 	{"device.restart", m_device_restart},
 	{"device.set_name", m_device_set_name},
 	{"wifi.status", m_wifi_status},

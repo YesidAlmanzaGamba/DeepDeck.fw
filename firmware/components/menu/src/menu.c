@@ -102,21 +102,33 @@ menu_item_t m_main_array[] =
 // };
 
 // ------------------LED modes -------------------------------
-char menu_led_mode[5][MENU_CHAR_NUM] =
+// Same order as led_effect_t in rgb_led.h
+char menu_led_mode[11][MENU_CHAR_NUM] =
     {
         "Off",
-        "Pulsating",
-        "Progressive",
-        "Rainbow",
-        "Solid"};
+        "Reactive",
+        "Colour cycle",
+        "Rainbow wave",
+        "Solid",
+        "Per-key",
+        "Breathing",
+        "Ripple",
+        "Gradient",
+        "Twinkle",
+        "Layer colour"};
 menu_item_t m_led_array[] =
     {
-        // Descripción                 //Acción             //Siguiente menu      ó     //Función
         {menu_led_mode[0], MA_FUNCTION, NONE, &menu_rgb_mode_0},
         {menu_led_mode[1], MA_FUNCTION, NONE, &menu_rgb_mode_1},
         {menu_led_mode[2], MA_FUNCTION, NONE, &menu_rgb_mode_2},
         {menu_led_mode[3], MA_FUNCTION, NONE, &menu_rgb_mode_3},
         {menu_led_mode[4], MA_FUNCTION, NONE, &menu_rgb_mode_4},
+        {menu_led_mode[5], MA_FUNCTION, NONE, &menu_rgb_mode_5},
+        {menu_led_mode[6], MA_FUNCTION, NONE, &menu_rgb_mode_6},
+        {menu_led_mode[7], MA_FUNCTION, NONE, &menu_rgb_mode_7},
+        {menu_led_mode[8], MA_FUNCTION, NONE, &menu_rgb_mode_8},
+        {menu_led_mode[9], MA_FUNCTION, NONE, &menu_rgb_mode_9},
+        {menu_led_mode[10], MA_FUNCTION, NONE, &menu_rgb_mode_10},
         {0, MA_END, 0, 0}};
 
 // ----------------------------------- Menu Array ------------------------------------------
@@ -572,13 +584,9 @@ uint8_t menu_send_rgb_mode(uint8_t mode)
 {
   rgb_mode_t led_mode;
   nvs_load_led_mode(&led_mode);
-  // int mode_t = mode;
   led_mode.mode = mode;
-  led_mode.S = 50;
-
   nvs_save_led_mode(led_mode);
-  xQueueSend(keyled_q, &led_mode, 0);
-
+  rgb_led_apply(&led_mode);
   return mret_none;
 }
 
@@ -607,3 +615,34 @@ uint8_t menu_rgb_mode_4(void)
 {
   return menu_send_rgb_mode(4);
 }
+
+uint8_t menu_rgb_mode_5(void)
+{
+  return menu_send_rgb_mode(5);
+}
+
+uint8_t menu_rgb_mode_6(void)
+{
+  return menu_send_rgb_mode(6);
+}
+
+uint8_t menu_rgb_mode_7(void)
+{
+  return menu_send_rgb_mode(7);
+}
+
+uint8_t menu_rgb_mode_8(void)
+{
+  return menu_send_rgb_mode(8);
+}
+
+uint8_t menu_rgb_mode_9(void)
+{
+  return menu_send_rgb_mode(9);
+}
+
+uint8_t menu_rgb_mode_10(void)
+{
+  return menu_send_rgb_mode(10);
+}
+

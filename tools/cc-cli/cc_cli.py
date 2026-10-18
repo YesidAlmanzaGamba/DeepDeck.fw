@@ -272,6 +272,43 @@ async def selftest(clients):
             await main.request("led.set", led)
             report.check(await main.request("led.get") == led, "LED mode restored")
 
+    # lighting v2: effect list, preview without saving, per-layer key colours (restored at the end)
+    try:
+        effects = (await main.request("led.effects"))["effects"]
+        report.check(len(effects) >= 11 and effects[5]["name"] == "Per-key", f"led.effects lists {len(effects)} effects")
+    except Exception as err:
+        report.fail(f"led.effects: {err}")
+    led = await main.request("led.get")
+    try:
+        await main.request("led.set", {"effect": 7, "color2": [1, 2, 3], "save": False})
+        stored = await main.request("led.get")
+        report.check(stored["effect"] == led["effect"] and stored["color2"] == led["color2"],
+                     "led.set with save:false does not store")
+    finally:
+        await main.request("led.set", dict(led, save=False))  # back to the stored look
+    if layers:
+        uuid = layers[0]["uuid"]
+        original = await main.request("led.keys.get", {"uuid": uuid})
+        report.check(len(original["keys"]) == 16 and len(original["layer"]) == 3, "led.keys.get returns 16 keys")
+        try:
+            painted = [[i * 10, 255 - i * 10, 7] for i in range(16)]
+            await main.request("led.keys.set", {"uuid": uuid, "keys": painted, "layer": [9, 8, 7]})
+            got = await main.request("led.keys.get", {"uuid": uuid})
+            report.check(got["keys"] == painted and got["layer"] == [9, 8, 7] and got["custom"],
+                         "led.keys.set stores the colours")
+            try:
+                await main.request("led.keys.set", {"uuid": uuid, "keys": painted[:3]})
+                report.fail("led.keys.set with 3 keys accepted")
+            except DeviceError as err:
+                report.check(err.code == "bad_request", "led.keys.set with 3 keys rejected")
+        finally:
+            if original["custom"]:
+                await main.request("led.keys.set", {"uuid": uuid, "keys": original["keys"], "layer": original["layer"]})
+            else:
+                await main.request("led.keys.reset", {"uuid": uuid})
+            got = await main.request("led.keys.get", {"uuid": uuid})
+            report.check(got == original, "key colours restored")
+
     print(f"== {report.failures} failure(s)")
     return report.failures
 

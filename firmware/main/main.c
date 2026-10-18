@@ -228,9 +228,7 @@ void app_main()
 #ifdef RGB_LEDS
 	xTaskCreate(rgb_leds_task, "rgb_leds_task", MEM_LEDS_TASK, NULL, PRIOR_LEDS_TASK	, NULL);
 	ESP_LOGI("rgb_leds_task", "initialized");
-	rgb_mode_t mode;
-	nvs_load_led_mode(&mode);
-	xQueueSend(keyled_q, &mode, 0);
+	// the LED task loads the stored lighting settings itself
 
 #endif
 

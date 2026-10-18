@@ -145,6 +145,9 @@ void set_current_layout(uint8_t layer)
 #endif
 	nvs_schedule_current_layer_save(current_layout);
 	config_task_layer_changed(false);
+#ifdef RGB_LEDS
+	rgb_led_layer_changed(); // per-key and layer colours follow the active layer
+#endif
 }
 
 uint32_t prev_time = 0;
@@ -207,13 +210,6 @@ void layer_adjust(uint16_t keycode)
 				break;
 			}
 			set_current_layout(current_layout);
-
-#ifdef RGB_LEDS
-			rgb_mode_t led_mode;
-			nvs_load_led_mode(&led_mode);
-			xQueueSend(keyled_q, &led_mode, 0);
-
-#endif
 			ESP_LOGI(KEY_PRESS_TAG, "Layer modified!, Current layer: %d",
 					 current_layout);
 		}
@@ -242,10 +238,6 @@ uint8_t *check_key_state(dd_layer *keymap)
 				if (matrix_state[row][col] == matrix_prev_state[row][col])
 					continue;
 
-#ifdef RGB_LEDS
-				rgb_key_led_press(row, col); // report the pressed key
-#endif
-
 				uint16_t report_index = (2 + col + row * KEYMAP_COLS);
 
 				keycode = keymap->key_map[row][col];
@@ -263,6 +255,9 @@ uint8_t *check_key_state(dd_layer *keymap)
 				led_status = check_led_status(keycode);
 				if (matrix_state[row][col - MATRIX_COLS * pad] == 1)
 				{
+#ifdef RGB_LEDS
+					rgb_key_led_press(row, col); // on press only: reactive and ripple effects
+#endif
 
 					// DISABLE PLUGIN_LAUNCHER. -> TODO ADJUST PLUGIN_BASE_VAL.
 					//  // checking for function
