@@ -1,12 +1,13 @@
 import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
 import { AuthGuard } from './core/guards/auth.guard';
+import { ConnectedGuard } from './core/guards/connected.guard';
 import { SimpleComponent } from '../app/layouts/simple/simple.component'
 
 export const SITE_ROUTES: Routes = [
   {
     path: '',
-    redirectTo: 'network',
+    redirectTo: 'dashboard',
     pathMatch: 'full',
   },
   // {
@@ -20,15 +21,20 @@ export const SITE_ROUTES: Routes = [
     runGuardsAndResolvers: 'always',
     children: [     
       {
-        path: 'keymap', loadChildren: () =>
+        // Command Center pages: connect, dashboard (and lighting, wifi, device, log)
+        path: '', loadChildren: () =>
+          import('./modules/device/device.module').then(m => m.DeviceModule)
+      },
+      {
+        path: 'keymap', canActivate: [ConnectedGuard], loadChildren: () =>
           import('./modules/keymap/keymap.module').then(m => m.KeymapModule)
       },
       {
-        path: 'macros', loadChildren: () =>
+        path: 'macros', canActivate: [ConnectedGuard], loadChildren: () =>
           import('./modules/macros/macros.module').then(m => m.MacrosModule)
       },
       {
-        path: 'network', loadChildren: () =>
+        path: 'network', canActivate: [ConnectedGuard], loadChildren: () =>
           import('./modules/network/network.module').then(m => m.NetworkModule)
       },      
       // {
@@ -38,7 +44,7 @@ export const SITE_ROUTES: Routes = [
     ],   
   },{
     path: '**',
-    redirectTo: 'keymap'
+    redirectTo: 'dashboard'
   }
 ];
 

@@ -1,0 +1,72 @@
+// Shared look of the Command Center pages (connect, dashboard, lighting, wifi, device, log)
+.dd-page {
+  padding: 24px 32px;
+  color: #ddd;
+  max-width: 1100px;
+
+  h2 { color: #dc9f10; margin: 0 0 16px; }
+  h3 { color: #dc9f10; margin: 0; }
+}
+
+.dd-card {
+  background: #2b2b2e;
+  border: 1px solid #3c3c40;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+}
+
+.dd-row, .dd-status, .dd-device {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.grow { flex: 1; min-width: 0; }
+.title { font-weight: 600; color: #eee; }
+.muted { color: #9a9a9a; font-size: 12px; }
+.ok-text { color: #6fd36f; font-weight: 600; }
+.badge {
+  background: #dc9f10; color: #000; border-radius: 4px;
+  padding: 1px 6px; font-size: 11px; margin-left: 6px;
+}
+
+.dd-status.ok { border-color: #4f8f4f; }
+.dd-device.likely { border-color: #8a6a12; }
+.dd-device.current { border-color: #4f8f4f; }
+
+.dd-error {
+  background: #4a2323; border: 1px solid #8a3a3a; color: #ffb4b4;
+  border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;
+}
+.dd-hint { color: #9a9a9a; font-size: 12px; line-height: 1.6; margin-top: 20px; }
+
+.btn-p {
+  background: #dc9f10; border: 0; border-radius: 5px; padding: 6px 14px;
+  color: #000; font-weight: 600; cursor: pointer;
+  &:disabled { opacity: 0.5; cursor: default; }
+}
+.btn-s {
+  background: transparent; border: 1px solid #dc9f10; border-radius: 5px; padding: 5px 12px;
+  color: #dc9f10; cursor: pointer;
+}
+
+.dd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+  .dd-card { margin: 0; }
+}
+.kv { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px;
+  span:first-child { color: #9a9a9a; } }
+
+.layer-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.layer-chip {
+  background: #333338; border: 1px solid #4a4a50; border-radius: 8px; padding: 10px 16px;
+  cursor: pointer; color: #ddd; min-width: 110px; text-align: left;
+  &.active { border-color: #dc9f10; background: #3d3320; color: #fff; }
+  &.disabled { opacity: 0.45; }
+  .muted { display: block; }
+}

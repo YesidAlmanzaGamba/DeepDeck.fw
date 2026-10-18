@@ -1,0 +1,41 @@
+<div class="dd-page">
+  <h2>{{ info?.name || 'DeepDeck' }}</h2>
+  <div class="dd-error" *ngIf="error">{{ error }}</div>
+
+  <div class="dd-grid" *ngIf="info">
+    <div class="dd-card">
+      <h3>Device</h3>
+      <div class="kv"><span>Firmware</span><span>{{ info.fw || info.FWVersion }}</span></div>
+      <div class="kv"><span>Bluetooth MAC</span><span>{{ info.mac || info.Mac }}</span></div>
+      <div class="kv"><span>Uptime</span><span>{{ uptime(info.uptime_s) }}</span></div>
+      <div class="kv"><span>Free memory</span><span>{{ info.heap ? (info.heap / 1024 | number:'1.0-0') + ' KB' : '' }}</span></div>
+    </div>
+    <div class="dd-card">
+      <h3>Connection</h3>
+      <div class="kv"><span>App link</span><span>{{ device.status$.value.kind === 'ble' ? 'Bluetooth' : device.status$.value.kind === 'usb' ? 'USB cable' : 'WiFi' }}</span></div>
+      <div class="kv"><span>Keyboard host</span><span>{{ info.ble_connected ? 'connected' : 'not connected' }}</span></div>
+    </div>
+    <div class="dd-card">
+      <h3>WiFi</h3>
+      <div class="kv"><span>State</span><span>{{ info.wifi?.state }}</span></div>
+      <div class="kv" *ngIf="info.wifi?.ssid"><span>Network</span><span>{{ info.wifi.ssid }}</span></div>
+      <div class="kv" *ngIf="info.wifi?.ip"><span>IP</span><span>{{ info.wifi.ip }}</span></div>
+      <div class="kv" *ngIf="info.wifi?.rssi"><span>Signal</span><span>{{ info.wifi.rssi }} dBm</span></div>
+    </div>
+  </div>
+
+  <div class="dd-card">
+    <div class="dd-row">
+      <h3 class="grow">Layers</h3>
+      <span class="muted" *ngIf="device.isApp">Click a layer to make it active. Changes made on the DeepDeck show here live.</span>
+    </div>
+    <div class="layer-list">
+      <button class="layer-chip" *ngFor="let l of layers" (click)="setActive(l)"
+        [class.active]="l.uuid === activeUuid" [class.disabled]="!l.active"
+        [title]="l.active ? '' : 'Disabled layer'">
+        {{ l.name }}
+        <span class="muted">{{ l.pos + 1 }}{{ l.uuid === activeUuid ? ' · active' : '' }}</span>
+      </button>
+    </div>
+  </div>
+</div>

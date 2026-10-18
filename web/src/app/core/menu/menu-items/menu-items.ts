@@ -13,10 +13,17 @@ export interface Menu {
     type: string;
     icon: string;
     label?: string;
+    appOnly?: boolean;
     children?: ChildrenItems[];
 }
 
-const MENUITEMS = [
+const MENUITEMS: Menu[] = [
+    {
+        state: 'dashboard',
+        name: 'DASHBOARD',
+        type: 'link',
+        icon: 'dashboard',
+    },
     {
         state: 'keymap',
         name: 'KEYMAP',
@@ -35,6 +42,13 @@ const MENUITEMS = [
         type: 'link',
         icon: 'settings',
     },      
+    {
+        state: 'connect',
+        name: 'CONNECT',
+        type: 'link',
+        icon: 'link',
+        appOnly: true,
+    },
     // {
     //     state: 'firmware',
     //     name: 'FIRMWARE',
@@ -51,7 +65,8 @@ export class MenuItems {
     get(type): Menu[] {
         switch(type){
             case 0:
-                return MENUITEMS;                
+                // pages marked appOnly need the Command Center (Bluetooth / USB link)
+                return MENUITEMS.filter(item => !item.appOnly || !!(window as any).__TAURI__);                
             
         }        
     }

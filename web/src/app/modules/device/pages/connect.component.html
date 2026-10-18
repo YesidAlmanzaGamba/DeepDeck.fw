@@ -1,0 +1,48 @@
+<div class="dd-page">
+  <h2>Connect</h2>
+
+  <div *ngIf="!device.isApp" class="dd-card">
+    <p>This page is served by the DeepDeck over WiFi, so it is already connected.
+      Install the <strong>DeepDeck Command Center</strong> app to configure it over Bluetooth or USB.</p>
+  </div>
+
+  <ng-container *ngIf="device.isApp">
+    <div class="dd-card dd-status" [class.ok]="status.connected">
+      <mat-icon>{{ status.connected ? (status.kind === 'ble' ? 'bluetooth_connected' : 'usb') : 'link_off' }}</mat-icon>
+      <div class="grow">
+        <div class="title">{{ status.connected ? 'Connected to ' + status.name : 'Not connected' }}</div>
+        <div class="muted" *ngIf="status.connected">{{ status.kind === 'ble' ? 'Bluetooth' : 'USB cable' }} · {{ status.id }}</div>
+        <div class="muted" *ngIf="!status.connected && status.reason">{{ status.reason }}</div>
+      </div>
+      <button *ngIf="status.connected" class="btn-p" (click)="disconnect()">Disconnect</button>
+    </div>
+
+    <div class="dd-row">
+      <h3 class="grow">Devices</h3>
+      <button class="btn-p" (click)="refresh()" [disabled]="loading">{{ loading ? 'Searching…' : 'Refresh' }}</button>
+    </div>
+
+    <div class="dd-error" *ngIf="error">{{ error }}</div>
+
+    <div class="dd-card dd-device" *ngFor="let d of devices" [class.likely]="d.likely" [class.current]="isCurrent(d)">
+      <mat-icon>{{ d.kind === 'ble' ? 'bluetooth' : 'usb' }}</mat-icon>
+      <div class="grow">
+        <div class="title">{{ d.name }} <span class="badge" *ngIf="d.likely">DeepDeck</span></div>
+        <div class="muted">{{ d.detail }}</div>
+      </div>
+      <button class="btn-p" *ngIf="!isCurrent(d)" (click)="connect(d)" [disabled]="connecting">
+        {{ connecting === d.kind + d.id ? 'Connecting…' : 'Connect' }}
+      </button>
+      <span class="ok-text" *ngIf="isCurrent(d)">Connected</span>
+    </div>
+
+    <p class="muted" *ngIf="!loading && devices.length === 0">No device found. Plug the DeepDeck in, or pair it in the Bluetooth settings.</p>
+
+    <div class="dd-hint">
+      <strong>Bluetooth:</strong> the DeepDeck must be paired with this computer. If it is paired but does not
+      connect, remove it in the Bluetooth settings and pair it again (needed once after updating from firmware
+      older than 0.6.0).<br>
+      <strong>USB:</strong> use the DeepDeck's USB cable (CP210x serial port).
+    </div>
+  </ng-container>
+</div>

@@ -1,4 +1,4 @@
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { DeviceService, DeviceError } from '../device/device.service';
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { mergeMap } from 'rxjs/operators';
@@ -226,115 +226,61 @@ export class ApiService {
   public currentConfig: any;
   public ipAddress: any;
 
+  // Every call goes through DeviceService: BLE/USB in the Command Center, HTTP in the web page.
+  // Writes are not retried: over BLE/USB a retry could apply them twice.
   constructor(
-    private http: HttpClient,
+    private device: DeviceService,
     private router: Router
   ) {
     this.currentConfig = JSON.parse(localStorage.getItem('current_config'));
     this.ipAddress =  localStorage.getItem('ipAddress');
-    // this.ipAddress =  '100.64.66.218'//'192.168.4.1';
-    console.log(this.ipAddress);
   }
 
   updateIP(IP:string){
     this.ipAddress =  IP;
+    localStorage.setItem('ipAddress', IP);
   }
 
   validateJsonLayer(jsonData: any, uuid_needed: boolean) {
     return validateJsonLayer(jsonData, uuid_needed);
   }
- 
-  saveNetwork(data): Observable<any> {    
-    return this.http.post<any>(`http://${this.ipAddress}/api/connect`, JSON.stringify(data),).pipe(
-      retry(1),
+
+  saveNetwork(data): Observable<any> {
+    return this.device.call('wifi.set', { ssid: data.ssid, pass: data.pass }).pipe(
       catchError(this.errorHandl)
     );
   }
 
-  saveLed(led): Observable<any> {    
-    return this.http.post<any>(`http://${this.ipAddress}/api/led`,JSON.stringify(led)).pipe(
-      retry(1),
+  saveLed(led): Observable<any> {
+    return this.device.call('led.set', led).pipe(
       catchError(this.errorHandl)
     );
   }
 
   deleteElement(uuid: string): Observable<any> {
-    const url = `http://${this.ipAddress}/api/layers?uuid=${uuid}`;
-  
-    console.log('Sending DELETE request to:', url);
-  
-    return this.http.delete<any>(url).pipe(
-      //retry(1),
-      //catchError((error) => {
-      //  console.error('Error in deleteElement:', error);
-      //  return of({ success: false, message: 'Error deleting the element.' });
-      //}
-      retry(1),
+    return this.device.call('layers.delete', { uuid }).pipe(
       catchError(this.errorHandl)
     );
   }
-
-  // saveCloud(data): Observable<any> {
-  //   let headers = new HttpHeaders();
-  //   headers = headers.set('Content-Type', 'application/json');
-  //   headers = headers.set('Accept-Language', 'es');
-  //   return this.http.post<any>(
-  //     '/save-cloud/',
-  //     JSON.stringify(data),
-  //     { headers }
-  //   ).pipe(
-  //     retry(1),
-  //     catchError(this.errorHandl)
-  //   );
-  // }
-
-  // saveDevice(data): Observable<any> {
-  //   let headers = new HttpHeaders();
-  //   headers = headers.set('Content-Type', 'application/json');
-  //   headers = headers.set('Accept-Language', 'es');
-  //   return this.http.post<any>(
-  //     '/save-device/',
-  //     JSON.stringify(data),
-  //     { headers }
-  //   ).pipe(
-  //     retry(1),
-  //     catchError(this.errorHandl)
-  //   );
-  // }
 
   resetDevice(data): Observable<any> {
-    let headers = new HttpHeaders();
-    headers = headers.set('Content-Type', 'application/json');
-    headers = headers.set('Accept-Language', 'es');
-    return this.http.post<any>(
-      '/reset/',
-      JSON.stringify(data),
-      { headers }
-    ).pipe(
-      retry(1),
+    return this.device.call('device.restart').pipe(
       catchError(this.errorHandl)
     );
   }
-
 
   getCurrentConfigData(force): Observable<any> {
     if (this.currentConfig && !force) {
       return of(this.currentConfig);
-    } else {
-      let headers = new HttpHeaders();
-      headers = headers.set('Content-Type', 'application/json');
-      headers = headers.set('Accept-Language', 'es');
-      // TODO Delete after local tests
-      return this.http.get<any>(`http://${this.ipAddress}/api/config`).pipe(
-        mergeMap(result => {
-          const configData = result;
-          this.setConfigData(configData);
-          return of(configData);
-        })
-        // retry(1),
-        // catchError(this.errorHandl)
-      );
     }
+    return this.device.call('device.info').pipe(
+      mergeMap(info => {
+        // field names read by the settings page
+        const configData = { ...info, FWVersion: info.fw ?? info.FWVersion, Mac: info.mac ?? info.Mac };
+        this.setConfigData(configData);
+        return of(configData);
+      })
+    );
   }
 
   setConfigData(configData): any {
@@ -343,55 +289,44 @@ export class ApiService {
   }
 
   getLayersName(): Observable<any> {
-    // TODO Delete after local tests
-    return this.http.get<any>(`http://${this.ipAddress}/api/layers/layer_names`).pipe(
-      retry(1),
-      catchError(this.errorHandl)
-    ); 
-  }
-
-  getLayersLayout(uuid): Observable<any> {
-    let params = new HttpParams();
-    
-    if (uuid) {
-      params = params.set('uuid', uuid);
-    }
-
-    // TODO Delete after local tests
-    return this.http.get<any>(`http://${this.ipAddress}/api/layers`, {params}).pipe(
+    return this.device.call('layers.list').pipe(
       retry(1),
       catchError(this.errorHandl)
     );
   }
 
-  updateLayersLayout(data): Observable<any> {        
+  getLayersLayout(uuid): Observable<any> {
+    return this.device.call('layers.get', { uuid }).pipe(
+      retry(1),
+      catchError(this.errorHandl)
+    );
+  }
+
+  updateLayersLayout(data): Observable<any> {
     if(validateJsonLayer(data,true))
     {
-      return this.http.put<any>(`http://${this.ipAddress}/api/layers`,  JSON.stringify(data)).pipe(
-      retry(1),
+      return this.device.call('layers.update', data).pipe(
       catchError(this.errorHandl)
       );
     }
     alert("Internal error: Layer json not valid")
   }
 
-  restoreDefaultSettings(): Observable<any> {        
-      return this.http.put<any>(`http://${this.ipAddress}/api/layers/restore`, null).pipe(
-      retry(1),
+  restoreDefaultSettings(): Observable<any> {
+      return this.device.call('layers.restore').pipe(
       catchError(this.errorHandl)
       );
   }
 
-   createLayer(data): Observable<any> {  
+   createLayer(data): Observable<any> {
     if(validateJsonLayer(data,true))
     {
-      return this.http.post<any>( `http://${this.ipAddress}/api/layers`, JSON.stringify(data),).pipe(
-      retry(1),
+      return this.device.call('layers.create', data).pipe(
       catchError(this.errorHandl)
       );
-    } 
+    }
     alert("Internal error: Layer json not valid")
-    
+
   }
 
   cleanData(): any {
@@ -400,30 +335,30 @@ export class ApiService {
   }
 
   getMacros(): Observable<any> {
-    return this.http.get<any>(`http://${this.ipAddress}/api/macros`).pipe(
+    return this.device.call('macros.list').pipe(
       retry(1),
       catchError(this.errorHandl)
-    ); 
+    );
   }
 
   updateMacro(data): Observable<any> {
-    return this.http.put<any>(`http://${this.ipAddress}/api/macros`,  JSON.stringify(data)).pipe(
-      retry(1),
+    return this.device.call('macros.update', data).pipe(
       catchError(this.errorHandl)
-    ); 
+    );
   }
 
   errorHandl(error) {
     let errorMessage = '';
-    if (error.error instanceof ErrorEvent) {
+    if (error instanceof DeviceError) {
+      errorMessage = error.message;
+    } else if (error.error instanceof ErrorEvent) {
       // Get client-side error
       errorMessage = error.error.message;
-      alert(errorMessage);
     } else {
       // Get server-side error
       errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
-      alert(errorMessage);
     }
+    alert(errorMessage);
     return throwError(errorMessage);
   }
 }
