@@ -80,6 +80,7 @@ static volatile uint8_t ripple_next = 0;
 static SemaphoreHandle_t colors_lock = NULL;
 static rgb_layer_colors_t shown_colors;
 static volatile bool reload_colors = true;
+static volatile bool idle_off = false; // rgb_led_set_idle(): all LEDs dark while the device is idle
 
 static uint32_t now_ms(void)
 {
@@ -444,12 +445,17 @@ static void render(const rgb_mode_t *mode, uint32_t t, uint8_t out[RGB_LED_KEYBO
             if (age < fade)
                 mix(c, mode->mode == LED_EFFECT_REACTIVE ? mode->rgb : mode->rgb2, 1.0f - age / fade);
         }
-        scale(c, mode->brightness / 255.0f);
+        scale(c, idle_off ? 0.0f : mode->brightness / 255.0f);
     }
 
     // notification LEDs: the colour of the active layer
     memcpy(notif, colors.layer, 3);
-    scale(notif, mode->mode == LED_EFFECT_OFF ? 0.0f : mode->brightness / 255.0f);
+    scale(notif, (mode->mode == LED_EFFECT_OFF || idle_off) ? 0.0f : mode->brightness / 255.0f);
+}
+
+void rgb_led_set_idle(bool idle)
+{
+    idle_off = idle;
 }
 
 void key_led_modes(void)

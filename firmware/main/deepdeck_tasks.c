@@ -25,6 +25,7 @@
 #include "rotary_encoder.h"
 #include "rgb_led.h"
 #include "menu.h"
+#include "device_settings.h"
 
 // HID Ble functions
 #include "hal_ble.h"
@@ -83,6 +84,7 @@ void oled_task(void *pvParameters)
 				update_oled();
 				CON_LOG_FLAG = false;
 			}
+			device_settings_idle_check(); // screen brightness and idle off, in the task that owns the display
 			break;
 		case S_SETTINGS: // Settings mode, showing the internal menu
 			menu_init();
@@ -112,6 +114,7 @@ void battery_reports(void *pvParameters)
 			bat_level = 100;
 			// if charging, do not enter deepsleep
 			DEEP_SLEEP = false;
+			user_activity(); // wakes the screen (device settings)
 		}
 		void *pReport = (void *)&bat_level;
 
@@ -152,6 +155,7 @@ void key_reports(void *pvParameters)
 		if (memcmp(past_report, report_state, sizeof past_report) != 0)
 		{
 			DEEP_SLEEP = false;
+			user_activity(); // wakes the screen (device settings)
 			void *pReport;
 			memcpy(past_report, report_state, sizeof past_report);
 
@@ -275,6 +279,7 @@ void encoder_report(void *pvParameters)
 		if (encoder2_status != past_encoder2_state)
 		{
 			DEEP_SLEEP = false;
+			user_activity(); // wakes the screen (device settings)
 
 			// Check if both encoder are pushed, to enter settings mode.
 			if (encoder2_status == ENC_BUT_LONG_PRESS && encoder_push_state(encoder_a))

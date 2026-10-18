@@ -111,6 +111,8 @@ Error codes:
 | `wifi.scan` | none | `{"aps":[{"ssid":"...","rssi":-40,"channel":6,"auth":"WPA2_PSK"}]}`; takes about 2–3 s |
 | `wifi.set` | `{"ssid":"...","pass":"..."}` | `{}`; the network is stored (the password is never logged) and joined at once, without a restart (0.7.0; older firmware restarted). `wifi.changed` follows when it gets an address. A network that cannot be reached is retried 5 times at once, then every 30 s |
 | `wifi.forget` | none | `{}`; the stored network is erased and WiFi disconnects |
+| `device.settings.get` | none | `{"screen_brightness":255,"screen_off_minutes":0,"leds_off_with_screen":false}` |
+| `device.settings.set` | any of those fields (`screen_off_minutes` 0 = never, up to 1440) | the stored settings; applied at once. Keys, knobs and layer changes wake the screen. `device.info.battery` is `null`: battery monitoring is off on this hardware |
 | `fw.info` | none | `{"version":"0.7.0","idf":"v4.4.7","built":"Oct 18 2026 03:14:05","running":"app0","state":"valid","slot_size":1536000,"chunk_max":2048,"other_version":"0.7.0"}` |
 | `fw.begin` | `{"size":1328672,"sha256":"<64 hex>"}` (SHA-256 of the whole file) | `{"chunk_max":2048,"slot":"app1"}`; starts an update into the other slot (a previous unfinished one is dropped) and asks the BLE host for a fast link |
 | `fw.chunk` | `{"offset":0,"data":"<base64>"}`: at most `chunk_max` bytes, offsets in order | `{"written":2048}`. The first chunk must be a DeepDeck image (`bad_request` otherwise and the update is dropped) |

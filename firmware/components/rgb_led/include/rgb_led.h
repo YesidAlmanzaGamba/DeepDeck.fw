@@ -86,6 +86,9 @@ void rgb_led_apply(const rgb_mode_t *mode);
 /** @brief The active layer changed: reload its key colours. Safe from any task. */
 void rgb_led_layer_changed(void);
 
+/** Turn all LEDs dark while the device is idle (device settings), and back on. */
+void rgb_led_set_idle(bool idle);
+
 /** @brief Show these key colours for `uuid` until the next layer change (live preview). */
 void rgb_led_preview_layer_colors(const char *uuid, const rgb_layer_colors_t *colors);
 

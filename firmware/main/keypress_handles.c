@@ -29,6 +29,7 @@
 #include "nvs_keymaps.h"
 #include "nvs_funcs.h"
 #include "plugin_manager.h"
+#include "device_settings.h"
 #include "rgb_led.h"
 #include "config_task.h"
 
@@ -139,6 +140,7 @@ static uint32_t millis()
 // so the same layer is active again after a reboot or deep sleep.
 void set_current_layout(uint8_t layer)
 {
+	user_activity(); // show the new layer: wakes the screen
 	current_layout = layer;
 #ifdef OLED_ENABLE
 	xQueueSend(layer_recieve_q, &current_layout, (TickType_t)0);

@@ -47,6 +47,7 @@
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_ota_ops.h"
+#include "device_settings.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
@@ -173,6 +174,7 @@ void app_main()
 		ESP_LOGI("MAIN", "restored layer %d", current_layout);
 	}
 
+	device_settings_init(); // screen brightness and idle settings
 	// before BLE starts: its connection events already draw on the OLED
 	user_i2c_mutex = xSemaphoreCreateMutex();
 	if (user_i2c_mutex == NULL)

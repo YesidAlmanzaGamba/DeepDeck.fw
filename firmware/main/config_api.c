@@ -25,6 +25,7 @@
 #include "config_service.h"
 #include "config_api.h"
 #include "wifi_handles.h"
+#include "device_settings.h"
 #include "esp_ota_ops.h"
 #include "esp_app_format.h"
 #include "esp_image_format.h"
@@ -220,6 +221,8 @@ static cJSON *m_device_info(cJSON *params, config_error_t *err)
 	cJSON_AddNumberToObject(info, "heap", st.heap);
 	cJSON_AddBoolToObject(info, "ble_connected", st.ble_connected);
 	cJSON_AddBoolToObject(info, "app_connected", st.app_connected);
+	// battery monitoring is off on this hardware (BATT_STAT): say so instead of guessing
+	cJSON_AddNullToObject(info, "battery");
 
 	cJSON *layer = cJSON_AddObjectToObject(info, "layer");
 	cJSON_AddNumberToObject(layer, "index", st.layer_index);
@@ -841,6 +844,43 @@ static cJSON *m_device_set_name(cJSON *params, config_error_t *err)
 	return cJSON_CreateObject();
 }
 
+static cJSON *settings_json(const device_settings_t *s)
+{
+	cJSON *json = cJSON_CreateObject();
+	cJSON_AddNumberToObject(json, "screen_brightness", s->screen_brightness);
+	cJSON_AddNumberToObject(json, "screen_off_minutes", s->screen_off_minutes);
+	cJSON_AddBoolToObject(json, "leds_off_with_screen", s->leds_off_with_screen);
+	return json;
+}
+
+static cJSON *m_device_settings_get(cJSON *params, config_error_t *err)
+{
+	device_settings_t s = device_settings_get();
+	return settings_json(&s);
+}
+
+static cJSON *m_device_settings_set(cJSON *params, config_error_t *err)
+{
+	device_settings_t s = device_settings_get(); // fields left out keep their value
+	uint8_t brightness = s.screen_brightness;
+	if (!read_byte(params, "screen_brightness", &brightness, err))
+		return NULL;
+	s.screen_brightness = brightness;
+	cJSON *off = cJSON_GetObjectItem(params, "screen_off_minutes");
+	if (off != NULL)
+	{
+		if (!cJSON_IsNumber(off) || off->valueint < 0 || off->valueint > 1440)
+			return fail(err, CONFIG_ERR_BAD_REQUEST, "screen_off_minutes: 0 (never) to 1440");
+		s.screen_off_minutes = off->valueint;
+	}
+	cJSON *leds = cJSON_GetObjectItem(params, "leds_off_with_screen");
+	if (leds != NULL)
+		s.leds_off_with_screen = cJSON_IsTrue(leds);
+	if (device_settings_set(&s) != ESP_OK)
+		return fail(err, CONFIG_ERR_INTERNAL, "could not store the settings");
+	return settings_json(&s);
+}
+
 // ---------------------------------------------------------------------------------------------
 // wifi.*
 
@@ -1190,6 +1230,8 @@ static const config_method_t methods[] = {
 	{"led.keys.set", m_led_keys_set},
 	{"led.keys.reset", m_led_keys_reset},
 	{"device.restart", m_device_restart},
+	{"device.settings.get", m_device_settings_get},
+	{"device.settings.set", m_device_settings_set},
 	{"device.set_name", m_device_set_name},
 	{"wifi.status", m_wifi_status},
 	{"wifi.scan", m_wifi_scan},
