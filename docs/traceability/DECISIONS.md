@@ -4,6 +4,7 @@ Product and architecture decisions, newest first. A decision stays valid until a
 
 | ID | Date | Decision | Decided by |
 |----|------|----------|------------|
+| D-031 | 2026-10-18 | No battery level and no deep sleep from the app: both are off in the firmware and not verified on this hardware | Claude |
 | D-030 | 2026-10-18 | Firmware updates go over BLE/USB from the app; downloading over WiFi is left for later | Claude |
 | D-029 | 2026-10-18 | Bootloader rollback on: a new firmware must mark itself valid at the end of `app_main` | Claude |
 | D-028 | 2026-10-18 | Phase 4 runs without the owner: conservative choices, recorded here, branch `phase4` not pushed | Claude |
@@ -36,6 +37,12 @@ Product and architecture decisions, newest first. A decision stays valid until a
 | D-001 | 2026-10-16 | One repository for firmware and web, with both histories kept | owner |
 
 ## Details
+
+**D-031:** `BATT_STAT` reads GPIO35 through a divider that may not exist on the Ahuyama (it is
+powered by USB); enabling it would show invented numbers. `SLEEP_MINS` puts the ESP32 in deep
+sleep, waking on the touch pad; how it wakes on this board is not verified, and a DeepDeck that
+does not wake needs unplugging. Screen-off when idle gives the burn-in and light benefit without
+that risk. Revisit with the owner.
 
 **D-030:** a WiFi download (the app serves the file, the DeepDeck fetches it) would take seconds
 instead of minutes. But it needs the PC and the DeepDeck on the same network, an inbound firewall

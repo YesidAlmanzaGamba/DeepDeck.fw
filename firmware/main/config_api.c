@@ -850,6 +850,8 @@ static cJSON *settings_json(const device_settings_t *s)
 	cJSON_AddNumberToObject(json, "screen_brightness", s->screen_brightness);
 	cJSON_AddNumberToObject(json, "screen_off_minutes", s->screen_off_minutes);
 	cJSON_AddBoolToObject(json, "leds_off_with_screen", s->leds_off_with_screen);
+	cJSON_AddNumberToObject(json, "idle_s", device_settings_idle_seconds());
+	cJSON_AddBoolToObject(json, "screen_off", device_settings_screen_off());
 	return json;
 }
 

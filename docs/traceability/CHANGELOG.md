@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-028 | 2026-10-18 | Screen brightness, screen off after N idle minutes, LEDs off with it (`device.settings.*`); Device page card | firmware, app | (branch `phase4`) | screen off at 60 s with a 1-minute timeout, back on with a layer change, page writes the setting | yes (automated); owner: brightness by eye |
 | CH-027 | 2026-10-18 | Tray icon (link and layer), close to tray, start with Windows (hidden), single instance, notification when the link is lost | app | (branch `phase4`) | autostart registry on/off, close hides, second start shows the window, `--hidden`, reconnect after a device restart | partly (owner: tray and notification by eye) |
 | CH-026 | 2026-10-18 | Layers by application: the app switches the DeepDeck's layer when another program comes to the front | app | (branch `phase4`) | fallback and a matching rule switched the layer on the device | yes (automated) |
 | CH-025 | 2026-10-18 | New keymap editor (4x4 keys + 2 knobs, key search, drag and drop); knob macros use the user's macros (R1.3); macro index bounds-checked | web, firmware | (branch `phase4`) | edit by click and by drag, knob action, save over BLE, read back over USB, layer restored identical | yes (automated) |
@@ -39,6 +40,17 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-028: Screen and idle settings (R6.5)
+- **What:** `main/device_settings.c` (NVS namespace `settings`): screen brightness (OLED contrast),
+  screen off after 0 (never) to 1440 idle minutes, LEDs dark with the screen. Keys, knobs and
+  layer changes (also from the app or layers by application) count as activity. The OLED task
+  applies it, as it owns the display. `device.settings.get/set` (with `idle_s` and `screen_off`
+  for diagnostics); `device.info.battery` is `null`. Device page: card "Screen and LEDs".
+- **Not done on purpose (D-031):** battery level and deep sleep.
+- **Verified:** with a 1-minute timeout the screen went off at 60–64 s idle and came back with a
+  layer change; the page stored "2 min" on the device; defaults restored (never).
+- **Owner to check:** the brightness slider by eye; LEDs going dark with the screen.
 
 ### CH-027: Tray, start with Windows, link-lost notice (R6.4)
 - **What (`src-tauri/src/desktop.rs`):**

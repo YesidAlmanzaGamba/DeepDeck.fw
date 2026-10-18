@@ -35,4 +35,8 @@ void user_activity(void);
  */
 void device_settings_idle_check(void);
 
+/** @brief Seconds since the last key, knob or layer change; whether the screen is off for it. */
+unsigned device_settings_idle_seconds(void);
+bool device_settings_screen_off(void);
+
 #endif

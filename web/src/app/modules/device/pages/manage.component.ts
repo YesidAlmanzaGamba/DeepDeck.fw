@@ -14,6 +14,9 @@ export class ManageComponent implements OnInit {
   info: any = null;
   name = '';
   desktop: { close_to_tray: boolean; notify_link_lost: boolean; autostart: boolean } | null = null;
+  screen: { screen_brightness: number; screen_off_minutes: number; leds_off_with_screen: boolean } | null = null;
+  readonly offChoices = [0, 1, 2, 5, 10, 15, 30, 60, 120];
+  private screenTimer: any;
   busy = '';
   message = '';
   error = '';
@@ -37,8 +40,27 @@ export class ManageComponent implements OnInit {
     }
   }
 
+  loadScreen() {
+    this.device.call('device.settings.get').subscribe({
+      next: (s) => (this.screen = s),
+      error: () => (this.screen = null), // firmware older than 0.7.0
+    });
+  }
+
+  /** Brightness previews while dragging; stored a moment after the last change */
+  screenChanged() {
+    clearTimeout(this.screenTimer);
+    this.screenTimer = setTimeout(() => {
+      const { screen_brightness, screen_off_minutes, leds_off_with_screen } = this.screen;
+      this.device.call('device.settings.set', { screen_brightness, screen_off_minutes: +screen_off_minutes, leds_off_with_screen }).subscribe({
+        error: (err) => (this.error = String(err.message || err)),
+      });
+    }, 300);
+  }
+
   ngOnInit(): void {
     this.loadDesktop();
+    this.loadScreen();
     this.device.call('device.info').subscribe({
       next: (info) => {
         this.info = info;

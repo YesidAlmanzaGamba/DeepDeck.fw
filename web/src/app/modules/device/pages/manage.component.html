@@ -29,6 +29,23 @@
     </div>
   </div>
 
+  <div class="dd-card" *ngIf="screen">
+    <h3>Screen and LEDs</h3>
+    <div class="controls" style="margin-top: 10px">
+      <label>Screen brightness
+        <mat-slider min="1" max="255" step="1" thumbLabel [(ngModel)]="screen.screen_brightness" (ngModelChange)="screenChanged()"></mat-slider>
+      </label>
+      <label>Turn the screen off after
+        <select [(ngModel)]="screen.screen_off_minutes" (ngModelChange)="screenChanged()">
+          <option *ngFor="let m of offChoices" [ngValue]="m">{{ m === 0 ? 'never' : m + ' min without use' }}</option>
+        </select>
+      </label>
+      <mat-slide-toggle [(ngModel)]="screen.leds_off_with_screen" (ngModelChange)="screenChanged()"
+        [disabled]="!screen.screen_off_minutes">The LEDs go off with the screen</mat-slide-toggle>
+    </div>
+    <p class="muted">A key, a knob or a layer change turns them back on. Battery: not measured on this DeepDeck.</p>
+  </div>
+
   <div class="dd-card" *ngIf="desktop">
     <h3>This computer</h3>
     <div class="toggles">

@@ -68,6 +68,16 @@ esp_err_t device_settings_set(const device_settings_t *settings)
 	return err;
 }
 
+unsigned device_settings_idle_seconds(void)
+{
+	return (unsigned)((esp_timer_get_time() - last_activity_us) / 1000000);
+}
+
+bool device_settings_screen_off(void)
+{
+	return screen_off;
+}
+
 void user_activity(void)
 {
 	last_activity_us = esp_timer_get_time();
