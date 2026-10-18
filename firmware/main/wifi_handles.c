@@ -28,14 +28,22 @@ static esp_timer_handle_t s_retry_timer;
 
 static void connect_now(void *arg)
 {
-	if (s_have_creds)
-		esp_wifi_connect();
+	if (!s_have_creds)
+		return;
+	esp_err_t err = esp_wifi_connect();
+	// no disconnect event follows a refused attempt (e.g. WiFi not started yet): try again later
+	if (err != ESP_OK && err != ESP_ERR_WIFI_CONN)
+	{
+		esp_timer_stop(s_retry_timer);
+		esp_timer_start_once(s_retry_timer, SLOW_RETRY_US);
+	}
 }
 
 static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
 	if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START)
 	{
+		s_retries = 0;
 		connect_now(NULL);
 	}
 	else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED)
@@ -50,7 +58,7 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *da
 		{
 			s_retries++;
 			ESP_LOGI(TAG, "disconnected (reason %d), retry %d", event->reason, s_retries);
-			esp_wifi_connect();
+			connect_now(NULL);
 		}
 		else
 		{
