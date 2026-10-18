@@ -12,6 +12,7 @@
 #include <freertos/event_groups.h>
 #include <freertos/queue.h>
 #include <esp_log.h>
+#include <stdbool.h>
 #include "u8g2.h"
 
 // rotation defines
@@ -49,6 +50,9 @@ void ble_connected_oled(void);
  *
  */
 void wifi_connected_oled(char *ip_char);
+
+/** @brief Show or hide the WiFi icon on the main screen (redrawn on the next update). */
+void oled_set_wifi_connected(bool connected);
 
 /** @brief running oled task
  * */

@@ -22,6 +22,7 @@
 #include "serial_transport.h"
 #include "config_api.h"
 #include "config_task.h"
+#include "oled_tasks.h"
 
 #define TAG "config_task"
 #define CONFIG_QUEUE_LEN 8
@@ -144,6 +145,9 @@ static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *event
 	if (!got_ip && !connected)
 		return;
 	connected = got_ip;
+#ifdef OLED_ENABLE
+	oled_set_wifi_connected(got_ip);
+#endif
 
 	cJSON *data = cJSON_CreateObject();
 	if (got_ip)

@@ -9,6 +9,7 @@
 #ifndef CONFIG_API_H_
 #define CONFIG_API_H_
 
+#include <stdbool.h>
 #include "cJSON.h"
 
 #define CONFIG_PROTOCOL_VERSION 1
@@ -28,6 +29,32 @@ typedef struct
 	config_err_code_t code;
 	char message[80];
 } config_error_t;
+
+/** @brief Snapshot of the device state, shown by device.info and by the on-device info screen. */
+typedef struct
+{
+	char name[41];
+	char mac[18];
+	bool ble_connected; // a host (the PC) is connected
+	bool app_connected; // the Command Center is connected over BLE
+	char wifi_state[12]; // "off", "ap", "connecting", "connected"
+	char ssid[33];
+	char ip[16];
+	int rssi;
+	unsigned heap;
+	unsigned uptime_s;
+	unsigned layers;
+	unsigned layer_index;
+	char layer_name[16];
+} device_status_t;
+
+void device_status_get(device_status_t *status);
+
+/**
+ * @brief Text lines for one page of the on-device info screen (menu "Device info").
+ * @return the number of lines written; lines[0] is the page title
+ */
+int device_status_lines(int page, char lines[][24], int max_lines);
 
 /** @brief Create the mutex. Call once at boot, before any transport starts. */
 void config_api_init(void);

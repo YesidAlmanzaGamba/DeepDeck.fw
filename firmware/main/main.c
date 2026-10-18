@@ -76,6 +76,8 @@
 #include "deepdeck_tasks.h"
 #include "i2c_bus.h"
 #include "config_task.h"
+#include "config_api.h"
+#include "menu.h"
 #include "wifi_handles.h"
 #include "server.h"
 #include "spiffs.h"
@@ -179,6 +181,7 @@ void app_main()
 	halBLEInit(1, 1);
 	// Command Center requests over BLE and USB, see docs/protocol.md
 	config_task_start();
+	menu_set_info_provider(device_status_lines); // pages of the on-device "Device info" screen
 	ESP_LOGI("HIDD", "MAIN finished...");
 
 	// init i2c. The OLED driver does not install the I2C driver itself, it relies on this bus.

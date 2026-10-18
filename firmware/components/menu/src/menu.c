@@ -16,6 +16,9 @@
 #include <sys/cdefs.h>
 #include "esp_compiler.h"
 #include "esp_log.h"
+#include "esp_system.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "menu.h"
 #include "keyboard_config.h"
 #include "nvs_funcs.h"
@@ -71,17 +74,18 @@ char menu_subtitles[menu_num][MENU_CHAR_NUM] =
 char menu_main_description[5][MENU_CHAR_NUM] =
     {
         //"Bluetooth",
+        "Device info",
         "LED configuration",
-        "DancingBerlin",
-        //"Go to Sleep",
+        "Restart",
         "Exit"};
 menu_item_t m_main_array[] =
     {
         // Descripción                 //Acción             //Siguiente menu      ó     //Función
         //  {menu_main_description[0],    MA_MENU,                BLUETOOTH_MENU,             0},
-        {menu_main_description[0], MA_MENU, LED_MODE_MENU, 0},
-        {menu_main_description[1], MA_FUNCTION, NONE, &berlinDance},
-        {menu_main_description[2], MA_FUNCTION, NONE, &menu_exit},
+        {menu_main_description[0], MA_FUNCTION, NONE, &menu_device_info},
+        {menu_main_description[1], MA_MENU, LED_MODE_MENU, 0},
+        {menu_main_description[2], MA_FUNCTION, NONE, &menu_restart},
+        {menu_main_description[3], MA_FUNCTION, NONE, &menu_exit},
         {0, MA_END, 0, 0}};
 // ------------------Bluetooth Menu-------------------------------
 // char menu_bt_description[2][MENU_CHAR_NUM] =
@@ -453,6 +457,89 @@ void menu_init(void)
   // menu_main.title = titles[0];
   // menu_main.subtitle = titles[1];
   // menu_main.menu_item_array = &menu_bluetooth;
+}
+
+// ------------------Device info--------------------------------
+// Pages of text supplied by the firmware (device_status_lines in main/config_api.c), so this
+// component does not depend on main. Turn a knob for the next page, press it to go back.
+#define INFO_PAGES 3
+#define INFO_LINES 6
+#define INFO_REFRESH_MS 1000
+
+static menu_info_provider_t info_provider = NULL;
+
+void menu_set_info_provider(menu_info_provider_t provider)
+{
+  info_provider = provider;
+}
+
+static void draw_info_page(int page)
+{
+  char lines[INFO_LINES][24];
+  int n = info_provider != NULL ? info_provider(page, lines, INFO_LINES) : 0;
+
+  u8g2_ClearBuffer(&u8g2);
+  // yellow band: page title and position
+  u8g2_SetFont(&u8g2, u8g2_font_helvB10_tr);
+  u8g2_DrawStr(&u8g2, 0, 12, n > 0 ? lines[0] : "Device info");
+  char pos[6];
+  snprintf(pos, sizeof(pos), "%d/%d", page + 1, INFO_PAGES);
+  u8g2_SetFont(&u8g2, u8g2_font_5x7_tf);
+  u8g2_DrawStr(&u8g2, 128 - u8g2_GetStrWidth(&u8g2, pos), 10, pos);
+  // blue area: up to 5 lines of 9 px
+  for (int i = 1; i < n; i++)
+    u8g2_DrawStr(&u8g2, 0, 16 + 9 * i, lines[i]);
+  u8g2_SendBuffer(&u8g2);
+}
+
+menu_ret menu_device_info(void)
+{
+  int page = 0;
+  TickType_t last_draw = 0;
+  bool redraw = true;
+  menu_event = MENU_NONE;
+  while (true)
+  {
+    switch (menu_event)
+    {
+    case MENU_DOWN:
+    case MENU_NEXT:
+      page = (page + 1) % INFO_PAGES;
+      redraw = true;
+      break;
+    case MENU_UP:
+    case MENU_PREV:
+      page = (page + INFO_PAGES - 1) % INFO_PAGES;
+      redraw = true;
+      break;
+    case MENU_SELECT:
+    case MENU_HOME:
+      menu_event = MENU_NONE;
+      return mret_none; // back to the menu
+    default:
+      break;
+    }
+    menu_event = MENU_NONE;
+    if (redraw || xTaskGetTickCount() - last_draw > pdMS_TO_TICKS(INFO_REFRESH_MS))
+    {
+      draw_info_page(page);
+      last_draw = xTaskGetTickCount();
+      redraw = false;
+    }
+    vTaskDelay(pdMS_TO_TICKS(50));
+  }
+}
+
+menu_ret menu_restart(void)
+{
+  u8g2_ClearBuffer(&u8g2);
+  u8g2_SetFont(&u8g2, u8g2_font_helvB10_tr);
+  u8g2_DrawStr(&u8g2, 0, 12, "Restarting");
+  u8g2_SendBuffer(&u8g2);
+  nvs_flush_current_layer();
+  vTaskDelay(pdMS_TO_TICKS(300));
+  esp_restart();
+  return mret_none;
 }
 
 uint8_t goto_sleep = false;

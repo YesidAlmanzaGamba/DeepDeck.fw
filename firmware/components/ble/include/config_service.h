@@ -37,6 +37,9 @@ void config_service_set_line_handler(config_service_line_cb_t handler);
  */
 esp_err_t config_service_send_line(const char *line, size_t len);
 
+/** @brief True while an app is connected to the config service with notifications on. */
+bool config_service_is_connected(void);
+
 /**
  * @brief Tell a bonded host that the GATT database changed, so it discovers the config service.
  * Hosts paired with older firmware cached a database without it (Windows does, and refuses an

@@ -22,6 +22,7 @@
 #include "rgb_led.h"
 #include "uuid.h"
 #include "hal_ble.h"
+#include "config_service.h"
 #include "config_api.h"
 
 #define TAG "config_api"
@@ -90,38 +91,110 @@ const char *config_err_http_status(config_err_code_t code)
 }
 
 // WiFi state read from the driver, not from the half-maintained flags in wifi_handles.c
-static cJSON *wifi_status_json(void)
+static void wifi_status_read(device_status_t *st)
 {
-	cJSON *wifi = cJSON_CreateObject();
+	strcpy(st->wifi_state, "off");
+	st->ssid[0] = st->ip[0] = '\0';
+	st->rssi = 0;
 	wifi_mode_t mode = WIFI_MODE_NULL;
 	if (esp_wifi_get_mode(&mode) != ESP_OK || mode == WIFI_MODE_NULL)
-	{
-		cJSON_AddStringToObject(wifi, "state", "off");
-		return wifi;
-	}
+		return;
 	if (mode == WIFI_MODE_AP)
 	{
-		cJSON_AddStringToObject(wifi, "state", "ap");
-		return wifi;
+		strcpy(st->wifi_state, "ap");
+		return;
 	}
-
 	wifi_ap_record_t ap;
 	if (esp_wifi_sta_get_ap_info(&ap) != ESP_OK)
 	{
-		cJSON_AddStringToObject(wifi, "state", "connecting");
-		return wifi;
+		strcpy(st->wifi_state, "connecting");
+		return;
 	}
-
-	char ip[16] = "";
 	esp_netif_ip_info_t ip_info;
 	esp_netif_t *sta = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
 	if (sta != NULL && esp_netif_get_ip_info(sta, &ip_info) == ESP_OK && ip_info.ip.addr != 0)
-		snprintf(ip, sizeof(ip), IPSTR, IP2STR(&ip_info.ip));
+		snprintf(st->ip, sizeof(st->ip), IPSTR, IP2STR(&ip_info.ip));
+	strcpy(st->wifi_state, st->ip[0] ? "connected" : "connecting");
+	strlcpy(st->ssid, (const char *)ap.ssid, sizeof(st->ssid));
+	st->rssi = ap.rssi;
+}
 
-	cJSON_AddStringToObject(wifi, "state", ip[0] ? "connected" : "connecting");
-	cJSON_AddStringToObject(wifi, "ssid", (const char *)ap.ssid);
-	cJSON_AddStringToObject(wifi, "ip", ip);
-	cJSON_AddNumberToObject(wifi, "rssi", ap.rssi);
+void device_status_get(device_status_t *st)
+{
+	memset(st, 0, sizeof(*st));
+	strlcpy(st->name, halBLEGetDeviceName(), sizeof(st->name));
+	const uint8_t *addr = esp_bt_dev_get_address();
+	if (addr != NULL)
+		snprintf(st->mac, sizeof(st->mac), "%02x:%02x:%02x:%02x:%02x:%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
+	st->ble_connected = halBLEIsConnected();
+	st->app_connected = config_service_is_connected();
+	wifi_status_read(st);
+	st->heap = esp_get_free_heap_size();
+	st->uptime_s = esp_timer_get_time() / 1000000;
+
+	layouts_lock();
+	st->layers = layers_num;
+	st->layer_index = current_layout;
+	if (current_layout < layers_num)
+		strlcpy(st->layer_name, key_layouts[current_layout].name, sizeof(st->layer_name));
+	layouts_unlock();
+}
+
+// The lines are cut to the width of the screen (23 characters) on purpose
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+int device_status_lines(int page, char lines[][24], int max_lines)
+{
+	device_status_t st;
+	device_status_get(&st);
+	int n = 0;
+#define LINE(...) \
+	if (n < max_lines) \
+		snprintf(lines[n++], 24, __VA_ARGS__)
+	switch (page)
+	{
+	case 0:
+		LINE("Bluetooth");
+		LINE("Name %s", st.name);
+		LINE("%s", st.mac);
+		LINE("Host %s", st.ble_connected ? "connected" : "not connected");
+		LINE("App  %s", st.app_connected ? "connected" : "not connected");
+		break;
+	case 1:
+		LINE("WiFi");
+		LINE("State %s", st.wifi_state);
+		if (st.ssid[0])
+			LINE("%s", st.ssid);
+		if (st.ip[0])
+			LINE("IP %s", st.ip);
+		if (st.rssi)
+			LINE("Signal %d dBm", st.rssi);
+		break;
+	default:
+		LINE("System");
+		LINE("Firmware %s", FIRMWARE_VERSION);
+		LINE("Free mem %u KB", st.heap / 1024);
+		LINE("Up %uh %02um %02us", st.uptime_s / 3600, (st.uptime_s / 60) % 60, st.uptime_s % 60);
+		LINE("Layer %u/%u %s", st.layer_index + 1, st.layers, st.layer_name);
+		break;
+	}
+#undef LINE
+	return n;
+}
+#pragma GCC diagnostic pop
+
+static cJSON *wifi_status_json(void)
+{
+	device_status_t st;
+	device_status_get(&st);
+	cJSON *wifi = cJSON_CreateObject();
+	cJSON_AddStringToObject(wifi, "state", st.wifi_state);
+	if (strcmp(st.wifi_state, "connected") == 0 || strcmp(st.wifi_state, "connecting") == 0)
+	{
+		cJSON_AddStringToObject(wifi, "ssid", st.ssid);
+		cJSON_AddStringToObject(wifi, "ip", st.ip);
+		cJSON_AddNumberToObject(wifi, "rssi", st.rssi);
+	}
 	return wifi;
 }
 
@@ -130,25 +203,24 @@ static cJSON *wifi_status_json(void)
 
 static cJSON *m_device_info(cJSON *params, config_error_t *err)
 {
+	device_status_t st;
+	device_status_get(&st);
 	cJSON *info = cJSON_CreateObject();
 	cJSON_AddNumberToObject(info, "proto", CONFIG_PROTOCOL_VERSION);
 	cJSON_AddStringToObject(info, "fw", FIRMWARE_VERSION);
-	cJSON_AddStringToObject(info, "name", halBLEGetDeviceName());
-
-	char mac[18] = "";
-	const uint8_t *addr = esp_bt_dev_get_address();
-	if (addr != NULL)
-		snprintf(mac, sizeof(mac), "%02x:%02x:%02x:%02x:%02x:%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
-	cJSON_AddStringToObject(info, "mac", mac);
-	cJSON_AddNumberToObject(info, "uptime_s", (double)(esp_timer_get_time() / 1000000));
-	cJSON_AddNumberToObject(info, "heap", esp_get_free_heap_size());
+	cJSON_AddStringToObject(info, "name", st.name);
+	cJSON_AddStringToObject(info, "mac", st.mac);
+	cJSON_AddNumberToObject(info, "uptime_s", st.uptime_s);
+	cJSON_AddNumberToObject(info, "heap", st.heap);
+	cJSON_AddBoolToObject(info, "ble_connected", st.ble_connected);
+	cJSON_AddBoolToObject(info, "app_connected", st.app_connected);
 
 	cJSON *layer = cJSON_AddObjectToObject(info, "layer");
-	cJSON_AddNumberToObject(layer, "index", current_layout);
-	if (current_layout < layers_num)
+	cJSON_AddNumberToObject(layer, "index", st.layer_index);
+	if (st.layer_index < st.layers)
 	{
-		cJSON_AddStringToObject(layer, "uuid", key_layouts[current_layout].uuid_str);
-		cJSON_AddStringToObject(layer, "name", key_layouts[current_layout].name);
+		cJSON_AddStringToObject(layer, "uuid", key_layouts[st.layer_index].uuid_str);
+		cJSON_AddStringToObject(layer, "name", st.layer_name);
 	}
 	cJSON_AddItemToObject(info, "wifi", wifi_status_json());
 	return info;

@@ -133,6 +133,11 @@ esp_err_t config_service_send_line(const char *line, size_t len)
 	return err;
 }
 
+bool config_service_is_connected(void)
+{
+	return connected && notify_enabled;
+}
+
 void config_service_indicate_service_changed(esp_bd_addr_t remote_bda)
 {
 	if (config_gatts_if == ESP_GATT_IF_NONE)

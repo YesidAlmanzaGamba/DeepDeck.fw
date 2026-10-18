@@ -96,6 +96,12 @@ void menu_init(void);
 
 menu_ret menu_goto_sleep(void);
 menu_ret menu_exit(void);
+menu_ret menu_device_info(void);
+menu_ret menu_restart(void);
+
+/** @brief Fills `lines` for page 0..2 of the Device info screen, lines[0] = title; returns the count. */
+typedef int (*menu_info_provider_t)(int page, char lines[][24], int max_lines);
+void menu_set_info_provider(menu_info_provider_t provider);
 
 uint8_t menu_get_goto_sleep(void);
 uint8_t menu_send_rgb_mode(uint8_t mode);
