@@ -6,17 +6,17 @@
   <div class="dd-card dd-status" *ngIf="status" [class.ok]="status.state === 'connected'">
     <mat-icon>{{ status.state === 'connected' ? 'wifi' : 'wifi_off' }}</mat-icon>
     <div class="grow">
-      <div class="title">{{ status.state === 'connected' ? 'Connected to ' + status.ssid : (status.state === 'ap' ? 'Setup network (AHUYAMA)' : status.state) }}</div>
+      <div class="title">{{ status.state === 'connected' ? 'Connected to ' + status.ssid : (status.state === 'not_set' ? 'No network set' : status.state === 'connecting' ? 'Looking for ' + (ssid || 'the network') + '…' : status.state) }}</div>
       <div class="muted" *ngIf="status.ip">IP {{ status.ip }} · signal {{ status.rssi }} dBm</div>
     </div>
+    <button class="btn-s danger" *ngIf="status.state !== 'not_set'" (click)="forget()" [disabled]="sending">Forget network</button>
   </div>
 
   <div class="dd-card">
     <div class="dd-row">
       <h3 class="grow">Networks</h3>
-      <button class="btn-p" (click)="scan()" [disabled]="scanning || !device.isApp">{{ scanning ? 'Scanning…' : 'Scan' }}</button>
+      <button class="btn-p" (click)="scan()" [disabled]="scanning">{{ scanning ? 'Scanning…' : 'Scan' }}</button>
     </div>
-    <p class="muted" *ngIf="!device.isApp">Scanning needs the Command Center app. Type the network name below.</p>
     <div class="dd-device ap" *ngFor="let ap of aps" (click)="pick(ap)" [class.current]="ap.ssid === ssid">
       <mat-icon>{{ bars(ap.rssi) }}</mat-icon>
       <div class="grow">
@@ -35,6 +35,7 @@
       <button class="btn-s" (click)="showPass = !showPass"><mat-icon>{{ showPass ? 'visibility_off' : 'visibility' }}</mat-icon></button>
       <button class="btn-p" (click)="connect()" [disabled]="!ssid || sending">{{ sending ? 'Sending…' : 'Connect' }}</button>
     </div>
-    <p class="muted">The DeepDeck stores the credentials and restarts to join the network.</p>
+    <p class="muted">The DeepDeck stores the network and joins it at once; Bluetooth stays connected.
+      WiFi is used for firmware updates.</p>
   </div>
 </div>

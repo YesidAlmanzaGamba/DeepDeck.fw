@@ -24,6 +24,7 @@
 #include "hal_ble.h"
 #include "config_service.h"
 #include "config_api.h"
+#include "wifi_handles.h"
 
 #define TAG "config_api"
 
@@ -99,9 +100,9 @@ static void wifi_status_read(device_status_t *st)
 	wifi_mode_t mode = WIFI_MODE_NULL;
 	if (esp_wifi_get_mode(&mode) != ESP_OK || mode == WIFI_MODE_NULL)
 		return;
-	if (mode == WIFI_MODE_AP)
+	if (!wifi_has_credentials())
 	{
-		strcpy(st->wifi_state, "ap");
+		strcpy(st->wifi_state, "not_set");
 		return;
 	}
 	wifi_ap_record_t ap;
@@ -838,8 +839,6 @@ static cJSON *m_device_set_name(cJSON *params, config_error_t *err)
 // ---------------------------------------------------------------------------------------------
 // wifi.*
 
-extern SemaphoreHandle_t Wifi_initSemaphore; // main.c
-extern bool wifi_reset;						 // wifi_handles.c
 
 static const char *auth_name(wifi_auth_mode_t auth)
 {
@@ -874,10 +873,6 @@ static cJSON *m_wifi_scan(cJSON *params, config_error_t *err)
 	wifi_mode_t mode;
 	if (esp_wifi_get_mode(&mode) != ESP_OK || mode == WIFI_MODE_NULL)
 		return fail(err, CONFIG_ERR_INTERNAL, "WiFi is off");
-	// A scan needs the station interface: in AP mode, add it for the duration of the scan
-	if (mode == WIFI_MODE_AP)
-		esp_wifi_set_mode(WIFI_MODE_APSTA);
-
 	wifi_scan_config_t scan = {.show_hidden = false};
 	esp_err_t res = esp_wifi_scan_start(&scan, true);
 	uint16_t count = 0;
@@ -890,8 +885,6 @@ static cJSON *m_wifi_scan(cJSON *params, config_error_t *err)
 		if (records == NULL || esp_wifi_scan_get_ap_records(&count, records) != ESP_OK)
 			count = 0;
 	}
-	if (mode == WIFI_MODE_AP)
-		esp_wifi_set_mode(WIFI_MODE_AP);
 	if (res != ESP_OK)
 	{
 		free(records);
@@ -913,16 +906,6 @@ static cJSON *m_wifi_scan(cJSON *params, config_error_t *err)
 	return result;
 }
 
-// Same as the web page's /api/connect: the WiFi task restarts the device to join the new network
-static void apply_wifi_credentials(void)
-{
-	vTaskDelay(pdMS_TO_TICKS(300)); // let the response leave first
-	nvs_flush_current_layer();
-	wifi_reset = true;
-	if (Wifi_initSemaphore != NULL)
-		xSemaphoreGive(Wifi_initSemaphore);
-}
-
 static cJSON *m_wifi_set(cJSON *params, config_error_t *err)
 {
 	cJSON *ssid = cJSON_GetObjectItem(params, "ssid");
@@ -932,20 +915,17 @@ static cJSON *m_wifi_set(cJSON *params, config_error_t *err)
 	if (!cJSON_IsString(pass) || strlen(pass->valuestring) > 64)
 		return fail(err, CONFIG_ERR_BAD_REQUEST, "pass: up to 64 characters");
 
-	nvs_handle_t nvs;
-	if (nvs_open("wifiCreds", NVS_READWRITE, &nvs) != ESP_OK)
-		return fail(err, CONFIG_ERR_INTERNAL, "NVS");
-	esp_err_t res = nvs_set_str(nvs, "ssid", ssid->valuestring);
-	if (res == ESP_OK)
-		res = nvs_set_str(nvs, "pass", pass->valuestring);
-	if (res == ESP_OK)
-		res = nvs_commit(nvs);
-	nvs_close(nvs);
-	if (res != ESP_OK)
+	// joins at once, no restart; the "wifi.changed" event follows when it gets an address
+	if (wifi_set_credentials(ssid->valuestring, pass->valuestring) != ESP_OK)
 		return fail(err, CONFIG_ERR_INTERNAL, "could not store the credentials");
-
 	ESP_LOGI(TAG, "WiFi credentials stored for \"%s\"", ssid->valuestring); // never log the password
-	defer(apply_wifi_credentials);
+	return cJSON_CreateObject();
+}
+
+static cJSON *m_wifi_forget(cJSON *params, config_error_t *err)
+{
+	if (wifi_forget() != ESP_OK)
+		return fail(err, CONFIG_ERR_INTERNAL, "could not forget the network");
 	return cJSON_CreateObject();
 }
 
@@ -977,6 +957,7 @@ static const config_method_t methods[] = {
 	{"wifi.status", m_wifi_status},
 	{"wifi.scan", m_wifi_scan},
 	{"wifi.set", m_wifi_set},
+	{"wifi.forget", m_wifi_forget},
 };
 
 void config_api_init(void)

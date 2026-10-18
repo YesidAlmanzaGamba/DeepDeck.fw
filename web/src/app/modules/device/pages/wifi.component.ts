@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { DeviceService } from 'src/app/core/services/device/device.service';
 
-/** WiFi of the DeepDeck: status, scan, and sending credentials (the DeepDeck restarts to join). */
+/** WiFi of the DeepDeck: status, scan, join (no restart), forget. */
 @Component({
   selector: 'app-wifi',
   templateUrl: './wifi.component.html',
@@ -25,9 +25,7 @@ export class WifiComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadStatus();
     this.subs.push(this.device.on('wifi.changed').subscribe(() => this.loadStatus()));
-    if (this.device.isApp) {
-      this.scan();
-    }
+    this.scan();
   }
 
   ngOnDestroy(): void {
@@ -69,15 +67,33 @@ export class WifiComponent implements OnInit, OnDestroy {
     this.pass = '';
   }
 
+  forget() {
+    if (!confirm('Forget the stored WiFi network?')) {
+      return;
+    }
+    this.sending = true;
+    this.device.call('wifi.forget').subscribe({
+      next: () => {
+        this.sending = false;
+        this.message = 'Network forgotten';
+        this.loadStatus();
+      },
+      error: (err) => {
+        this.sending = false;
+        this.error = String(err.message || err);
+      },
+    });
+  }
+
   connect() {
     this.sending = true;
     this.error = '';
     this.device.call('wifi.set', { ssid: this.ssid, pass: this.pass }).subscribe({
       next: () => {
         this.sending = false;
-        this.message = `Sent. The DeepDeck restarts to join "${this.ssid}"` +
-          (this.device.isApp ? ' and the app reconnects by itself.' : '.');
+        this.message = `Joining "${this.ssid}"…`;
         this.pass = '';
+        setTimeout(() => this.loadStatus(), 4000);
       },
       error: (err) => {
         this.sending = false;

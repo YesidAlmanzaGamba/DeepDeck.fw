@@ -33,10 +33,6 @@ export const SITE_ROUTES: Routes = [
         path: 'macros', canActivate: [ConnectedGuard], loadChildren: () =>
           import('./modules/macros/macros.module').then(m => m.MacrosModule)
       },
-      {
-        path: 'network', canActivate: [ConnectedGuard], loadChildren: () =>
-          import('./modules/network/network.module').then(m => m.NetworkModule)
-      },      
       // {
       //   path: 'firmware', loadChildren: () =>
       //     import('./modules/firmware/firmware.module').then(m => m.FirmwareModule)

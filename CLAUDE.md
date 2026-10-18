@@ -12,7 +12,6 @@ This repository is a fork that is being reworked as a whole. The upstream repos
 | Path | Content |
 |------|---------|
 | `firmware/` | ESP-IDF project (C, FreeRTOS). `main/` = app, `components/` = drivers and libraries |
-| `firmware/spiffs_image/` | **Generated.** Built web app, packed into the `www_0` SPIFFS partition. Never edit by hand |
 | `web/` | Angular 15 configurator (`develop` branch of DeepDeck.Web, imported with `git subtree`) |
 | `docs/protocol.md` | **The configuration protocol** (methods, objects, events, BLE/USB/HTTP framing). Change it in the same commit as the code |
 | `docs/plans/` | Plans: one file per piece of work, written **before** implementing it |
@@ -27,9 +26,9 @@ on-device web portal, which is removed in R4.5. Plan: `docs/plans/2026-10-17-com
 
 - `firmware/main/config_api.c` holds **every** configuration action as a method (`layers.update`,
   `wifi.scan`, ...).
-  - BLE (`components/ble/config_service.c`), USB (`main/serial_transport.c`) and the `/api` HTTP
-    handlers (`main/server.c`, thin wrappers) all call it.
-  - Add new configuration features there, not in `server.c`.
+  - BLE (`components/ble/config_service.c`) and USB (`main/serial_transport.c`) call it.
+  - The web server, SPIFFS image and WiFi setup network were removed in 0.7.0 (R4.5): do not
+    bring back HTTP. WiFi is a station only (`main/wifi_handles.c`), set with `wifi.set`.
 - `config_task.c` runs BLE and USB requests one at a time; never do the work in the BLE callback.
   - Events (`layer.changed`, `wifi.changed`) go through `config_task_broadcast_event()`.
   - Methods that restart the device use `defer()`, so the reply is sent first.
@@ -39,7 +38,7 @@ on-device web portal, which is removed in R4.5. Plan: `docs/plans/2026-10-17-com
   attribute table at a time. Hosts paired with older firmware must re-pair once (Windows caches GATT).
 - Test after firmware changes: `python -I tools/cc-cli/cc_cli.py --usb COM3 --ble selftest` must give
   0 failures. It restores everything it changes.
-- Free heap is about 38–39 KB with BLE, WiFi and the web server running. Check `device.info.heap` after
+- Free heap is about 64 KB with BLE and WiFi running (0.7.0; it was 38 KB with the web server). Check `device.info.heap` after
   adding features, and look for leaks with repeated writes.
 
 ## Building
@@ -67,12 +66,11 @@ on-device web portal, which is removed in R4.5. Plan: `docs/plans/2026-10-17-com
 ```sh
 cd web
 npm install                # Node 22 works despite Angular 15 targeting 14/16/18
-npm run build-deepdeck     # ng build (production) + scripts/deploy-to-firmware.js
+npm run build-prod         # the Command Center's UI (dist/esp-frontend); the firmware no longer embeds it
 ```
 
-`deploy-to-firmware.js` gzips js/css/svg, copies only referenced assets, replaces
-`firmware/spiffs_image`, and fails if the image is larger than `www_0` (600 KB, about 86% used).
-Then rebuild and flash the firmware: flashing writes `www_0` too.
+The `www_0` partition (600 KB) is unused since 0.7.0. The partition table was kept on purpose,
+so flashing a new firmware never moves NVS (D-027).
 
 `npm install` rewrites `package-lock.json` and `yarn.lock`. Revert them unless dependencies changed on purpose.
 
@@ -93,8 +91,8 @@ The CLI is run through `npx` on purpose (D-026). Checks:
   `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9333 --remote-allow-origins=*"`.
 
 In the Angular code, talk to the DeepDeck only through `core/services/device/device.service.ts`
-(`call(method, params)`, `on(event)`). It uses the app's link inside Tauri and maps onto `/api` in
-a plain browser. The rxjs version is 6: no `firstValueFrom`, `throwError(() => ...)` or ES2019 array
+(`call(method, params)`, `on(event)`). It only works inside Tauri; in a plain browser every page
+says "not connected". The rxjs version is 6: no `firstValueFrom`, `throwError(() => ...)` or ES2019 array
 methods.
 
 ## Architecture notes that are easy to miss
@@ -115,8 +113,8 @@ methods.
 - LEDs: `components/rgb_led` renders frames in its own task. Change the mode with `rgb_led_apply()`,
   never by drawing pixels elsewhere. Per-layer key colours are in NVS namespace `led_keys`
   (`k_<uuid>`); deleting or restoring layers must erase them (`rgb_layer_colors_erase*`).
-- The REST API (`firmware/main/server.c`) and `web/src/app/core/services/api/api.service.ts` are one
-  contract: change both in the **same commit**.
+- The protocol (`firmware/main/config_api.c`, `docs/protocol.md`) and its callers in `web/`
+  (`device.service.ts`, `api.service.ts`) are one contract: change them in the **same commit**.
 - The BLE HID report descriptor still declares mouse and joystick reports. That is on purpose:
   changing it forces every paired host to re-pair.
 - The I2C bus and the `i2s_user_lock` mutex in `main.c` are required by the OLED, even though the

@@ -56,14 +56,6 @@ const MENUITEMS: Menu[] = [
         icon: 'memory',
     },
     {
-        // the web page's own settings (WiFi and LEDs); the app has the pages above instead
-        state: 'network',
-        name: 'SETTINGS',
-        type: 'link',
-        icon: 'settings',
-        webOnly: true,
-    },
-    {
         state: 'log',
         name: 'LOG',
         type: 'link',

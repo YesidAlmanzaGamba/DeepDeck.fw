@@ -40,7 +40,8 @@ pub fn run(app: AppHandle) {
         }
 
         let mut failures = 0;
-        for (id, method) in [(1, "device.info"), (2, "layers.list"), (3, "led.get"), (4, "led.effects")] {
+        // ids far above the ones the app window uses: it may be sending requests at the same time
+        for (id, method) in [(900001, "device.info"), (900002, "layers.list"), (900003, "led.get"), (900004, "led.effects")] {
             let line = format!("{{\"id\":{id},\"method\":\"{method}\"}}");
             let started = Instant::now();
             if let Err(err) = tauri::async_runtime::block_on(links.send(&app, line)) {

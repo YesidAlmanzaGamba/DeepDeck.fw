@@ -68,7 +68,6 @@
 #include "battery_monitor.h"
 #include "nvs_funcs.h"
 #include "nvs_keymaps.h"
-#include "mqtt.h"
 
 #include "esp_err.h"
 
@@ -79,14 +78,11 @@
 #include "config_api.h"
 #include "menu.h"
 #include "wifi_handles.h"
-#include "server.h"
-#include "spiffs.h"
 
 
 // plugin functions
 static config_data_t config;
 
-SemaphoreHandle_t Wifi_initSemaphore = NULL;
 
 #define USER_CHECK(a, str, ret)                                                \
 	if (!(a))                                                                  \
@@ -176,6 +172,15 @@ void app_main()
 		ESP_LOGI("MAIN", "restored layer %d", current_layout);
 	}
 
+	// before BLE starts: its connection events already draw on the OLED
+	user_i2c_mutex = xSemaphoreCreateMutex();
+	if (user_i2c_mutex == NULL)
+	{
+		ESP_LOGE("MAIN", "%s:%d (%s):%s", __FILE__, __LINE__, __FUNCTION__, "user_i2c_mutex failed");
+		while (1)
+			vTaskDelay(pdMS_TO_TICKS(200));
+	}
+
 	// activate keyboard BT stack, advertised with the name stored in NVS (device.set_name)
 	halBLESetDeviceName(config.bt_device_name);
 	halBLEInit(1, 1);
@@ -198,14 +203,6 @@ void app_main()
 			I2C_MASTER_FREQ_HZ,
 	};
 	i2c_bus_handle_t i2c_bus = i2c_bus_create(i2c_master_port, &conf);
-
-	user_i2c_mutex = xSemaphoreCreateMutex();
-	if (user_i2c_mutex == NULL)
-	{
-		ESP_LOGE("MAIN", "%s:%d (%s):%s", __FILE__, __LINE__, __FUNCTION__, "user_i2c_mutex failed");
-		while (1)
-			vTaskDelay(pdMS_TO_TICKS(200));
-	}
 
 	// activate oled
 #ifdef OLED_ENABLE
@@ -252,12 +249,7 @@ void app_main()
 #endif
 
 #ifdef WIFI_ENABLE
-	// spiffs_init();
-	esp_log_level_set("Wifi", ESP_LOG_DEBUG);
-	// wifi_app_main();
-	Wifi_initSemaphore = xSemaphoreCreateBinary();
-	xTaskCreate(&wifiInit, "init comms", MEM_WIFI_TASK, NULL, PRIOR_WIFI_TASK, NULL);
-	xSemaphoreGive(Wifi_initSemaphore);
+	wifi_start(); // station only: the Command Center configures it over BLE or USB
 #endif
 
 	ESP_LOGI("Main", "Main sequence done!");

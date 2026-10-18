@@ -1,8 +1,9 @@
 # DeepDeck configuration protocol, version 1
 
 The single contract between the firmware (`firmware/main/config_api.c`) and its clients: the
-Command Center app, `tools/cc-cli/cc_cli.py`, and the web page (through HTTP). **Change this file
-in the same commit as the code.**
+Command Center app and `tools/cc-cli/cc_cli.py`. **Change this file in the same commit as the code.**
+
+The HTTP transport and the on-device web page were removed with the WiFi portal in firmware 0.7.0 (R4.5).
 
 ## Transports and framing
 
@@ -13,7 +14,6 @@ Lines are at most **4096 bytes** in either direction.
 |-----------|--------------------|
 | BLE | GATT service `dd0e0001-7f4b-4c1a-9d3e-2a6b1c5e8f00`. The app writes to RX `dd0e0002-…` (write or write-without-response) in chunks of at most MTU−3 bytes; the device notifies on TX `dd0e0003-…` in chunks of at most MTU−3 bytes. Both sides join chunks until `\n`. Both characteristics require an encrypted (bonded) link. The device asks for MTU 517. |
 | USB | UART0 at 115200 8N1, shared with the log console. Protocol lines start with `@DD ` in both directions; every other line is log output. Open the port with **DTR and RTS de-asserted**, otherwise the auto-reset circuit reboots the board. |
-| HTTP | The existing `/api/...` endpoints of the web page, kept until the portal is removed (R4.5). They call the same code and return the same bodies as the `result` below; errors come back as `{"error":{...}}` with status 400, 404 or 500. `/api/config` also carries the legacy `FWVersion`, `Mac` and `ssid` fields. |
 
 Hosts that paired with firmware older than the Command Center must **remove and pair the DeepDeck
 again once**. Windows caches the old GATT database and does not see the config service otherwise.
@@ -107,9 +107,10 @@ Error codes:
 | `led.keys.get` | `{"uuid":"..."}` | Key colours of that layer |
 | `led.keys.set` | `{"uuid":"...","keys":[16 x [r,g,b]],"layer":[r,g,b],"save":true}`; `keys` and `layer` may be omitted | `{}`; shown at once if it is the active layer; `save:false` previews |
 | `led.keys.reset` | `{"uuid":"..."}` | `{}`; back to the defaults |
-| `wifi.status` | none | `{"state":"connected"\|"connecting"\|"ap"\|"off","ssid":"...","ip":"...","rssi":-50}` |
+| `wifi.status` | none | `{"state":"connected"\|"connecting"\|"not_set"\|"off","ssid":"...","ip":"...","rssi":-50}`; `not_set`: no network stored (0.7.0; older firmware said `ap` for its setup network) |
 | `wifi.scan` | none | `{"aps":[{"ssid":"...","rssi":-40,"channel":6,"auth":"WPA2_PSK"}]}`; takes about 2–3 s |
-| `wifi.set` | `{"ssid":"...","pass":"..."}` | `{}`; the credentials are stored (the password is never logged) and the device restarts to join the network |
+| `wifi.set` | `{"ssid":"...","pass":"..."}` | `{}`; the network is stored (the password is never logged) and joined at once, without a restart (0.7.0; older firmware restarted). `wifi.changed` follows when it gets an address. A network that cannot be reached is retried 5 times at once, then every 30 s |
+| `wifi.forget` | none | `{}`; the stored network is erased and WiFi disconnects |
 
 ## Events
 

@@ -20,7 +20,7 @@ R1.2–R1.4 wait until this is done; R1.4 (API safety) is largely covered, becau
 | R4.2 | Firmware transports: BLE GATT config service, UART0 framing | done (in Phase 1) |
 | R4.3 | Command Center app: Tauri, transport layer, Connect and WiFi pages, plus dashboard, active layer, rename, backup/restore, USB log, restart (D-017) | done on Windows: [plan](2026-10-18-app-lighting-oled.md); owner to try it |
 | R4.4 | Installers for Windows, macOS and Linux (CI); app BLE on macOS (CoreBluetooth) and Linux (BlueZ) (D-024) | proposed |
-| R4.5 | Remove web server, SPIFFS, AP mode; repartition | proposed |
+| R4.5 | Remove web server, SPIFFS, AP mode (no repartition, D-027) | done: [plan](2026-10-18-phase4.md) |
 
 ## 5. Device experience (asked by the owner on 2026-10-18)
 
@@ -31,7 +31,9 @@ Plan: [2026-10-18-app-lighting-oled](2026-10-18-app-lighting-oled.md)
 | R5.1 | OLED: layer name and status in the yellow band, 4x4 key grid; Device info pages in the settings menu | done; owner to check on the device |
 | R5.2 | Lighting v2: 11 effects, per-layer key colours, live preview from the app (replaces R1.2) | done; tested by the owner (2026-10-18) |
 
-## 6. Suggested next (proposed by Claude on 2026-10-18, not yet chosen)
+## 6. Phase 4 (asked by the owner on 2026-10-18: all, in order)
+
+Plan: [2026-10-18-phase4](2026-10-18-phase4.md)
 
 In suggested order. R4.5 (remove the portal) comes first because it frees flash and RAM for R6.1.
 

@@ -1,5 +1,4 @@
 import { Injectable, NgZone } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, Observable, ReplaySubject, Subject, from, throwError } from 'rxjs';
 import { filter, map } from 'rxjs/operators';
 
@@ -37,10 +36,9 @@ const REQUEST_TIMEOUT_MS = 10000;
 /**
  * The one way the pages talk to the DeepDeck (protocol: docs/protocol.md).
  *
- * In the Command Center (Tauri) requests go as JSON lines over BLE or USB, and the device sends
- * events (layer.changed, wifi.changed). In a plain browser (the web page served by the DeepDeck)
- * the methods that have an /api endpoint are mapped onto HTTP, so that page keeps working until
- * the portal is removed.
+ * Requests go as JSON lines over BLE or USB through the Command Center (Tauri), and the device
+ * sends events (layer.changed, wifi.changed). The DeepDeck no longer serves a web page (R4.5), so
+ * in a plain browser (ng serve) nothing can be reached: pages show "not connected".
  */
 @Injectable({ providedIn: 'root' })
 export class DeviceService {
@@ -52,12 +50,11 @@ export class DeviceService {
   private nextId = 1;
   private pending = new Map<number, { resolve: (v: any) => void; reject: (e: any) => void; timer: any }>();
 
-  constructor(private http: HttpClient, private zone: NgZone) {
+  constructor(private zone: NgZone) {
     if (this.isApp) {
       this.listenToApp();
     } else {
-      // the web page is served by the DeepDeck itself: it is "connected" by definition
-      this.status$.next({ connected: true, kind: undefined, name: 'DeepDeck (WiFi)' });
+      this.status$.next({ connected: false, reason: 'open this page in the DeepDeck Command Center app' });
     }
   }
 
@@ -65,7 +62,10 @@ export class DeviceService {
   // Requests
 
   call<T = any>(method: string, params?: any): Observable<T> {
-    return this.isApp ? from(this.callApp<T>(method, params)) : this.callHttp<T>(method, params);
+    if (!this.isApp) {
+      return throwError(new DeviceError('app_only', 'the DeepDeck is reached through the Command Center app')); // rxjs 6
+    }
+    return from(this.callApp<T>(method, params));
   }
 
   private async callApp<T>(method: string, params?: any): Promise<T> {
@@ -118,39 +118,6 @@ export class DeviceService {
       p.reject(new DeviceError(msg.error.code, msg.error.message));
     } else {
       p.resolve(msg.result);
-    }
-  }
-
-  // The web page's HTTP API (firmware/main/server.c), for the methods it has
-  private callHttp<T>(method: string, params: any = {}): Observable<T> {
-    const base = `http://${localStorage.getItem('ipAddress') || location.host}/api`;
-    const uuid = new HttpParams().set('uuid', params.uuid || '');
-    const body = JSON.stringify(params);
-    switch (method) {
-      case 'device.info':
-        return this.http.get<T>(`${base}/config`);
-      case 'layers.list':
-        return this.http.get<T>(`${base}/layers/layer_names`);
-      case 'layers.get':
-        return this.http.get<T>(`${base}/layers`, { params: uuid });
-      case 'layers.create':
-        return this.http.post<T>(`${base}/layers`, body);
-      case 'layers.update':
-        return this.http.put<T>(`${base}/layers`, body);
-      case 'layers.delete':
-        return this.http.delete<T>(`${base}/layers`, { params: uuid });
-      case 'layers.restore':
-        return this.http.put<T>(`${base}/layers/restore`, null);
-      case 'macros.list':
-        return this.http.get<T>(`${base}/macros`);
-      case 'macros.update':
-        return this.http.put<T>(`${base}/macros`, body);
-      case 'led.set':
-        return this.http.post<T>(`${base}/led`, body);
-      case 'wifi.set':
-        return this.http.post<T>(`${base}/connect`, body);
-      default:
-        return throwError(new DeviceError('app_only', `${method} needs the DeepDeck Command Center app`)); // rxjs 6
     }
   }
 

@@ -4,6 +4,8 @@ Product and architecture decisions, newest first. A decision stays valid until a
 
 | ID | Date | Decision | Decided by |
 |----|------|----------|------------|
+| D-028 | 2026-10-18 | Phase 4 runs without the owner: conservative choices, recorded here, branch `phase4` not pushed | Claude |
+| D-027 | 2026-10-18 | Keep the partition table when removing SPIFFS; `www_0` stays unused | Claude |
 | D-026 | 2026-10-18 | The Tauri CLI runs through `npx @tauri-apps/cli@2.12.3`, not as an npm dependency | Claude |
 | D-025 | 2026-10-18 | The web page's Settings page stays in the browser only; the app has Lighting, WiFi and Device pages | Claude |
 | D-024 | 2026-10-18 | App BLE is Windows-first (WinRT); macOS and Linux get USB now and BLE in R4.4 | Claude |
@@ -32,6 +34,13 @@ Product and architecture decisions, newest first. A decision stays valid until a
 | D-001 | 2026-10-16 | One repository for firmware and web, with both histories kept | owner |
 
 ## Details
+
+**D-028:** the owner asked for all ten suggestions in a row, to review the next day. Nothing is
+pushed or merged to `main` until they have looked at it.
+
+**D-027:** changing partition offsets while the device runs from `ota_1` could leave it unbootable,
+and flashing a moved NVS would wipe the layers. The 600 KB of `www_0` is not needed: both app
+slots have 14% free after R4.5.
 
 **D-026:** adding `@tauri-apps/cli` to `package.json` rewrites `package-lock.json` and `yarn.lock`
 for the whole Angular 15 tree. Pinning the version on the `npx` line gives the same result without

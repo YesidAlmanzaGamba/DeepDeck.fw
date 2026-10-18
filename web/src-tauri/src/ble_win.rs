@@ -11,8 +11,8 @@ use std::sync::{Arc, Mutex};
 use windows::core::{Ref, GUID, HSTRING};
 use windows::Devices::Bluetooth::GenericAttributeProfile::{
     GattCharacteristic, GattClientCharacteristicConfigurationDescriptorValue,
-    GattCommunicationStatus, GattDeviceService, GattSession, GattValueChangedEventArgs,
-    GattWriteOption,
+    GattCommunicationStatus, GattDeviceService, GattOpenStatus, GattSession, GattSharingMode,
+    GattValueChangedEventArgs, GattWriteOption,
 };
 use windows::Devices::Bluetooth::{BluetoothCacheMode, BluetoothConnectionStatus, BluetoothLEDevice};
 use windows::Devices::Enumeration::DeviceInformation;
@@ -103,6 +103,19 @@ pub async fn connect(
         "the DeepDeck has no configuration service: update its firmware, or remove and pair it again in Windows"
             .to_string()
     })?;
+    // Shared, so the app and tools (cc_cli, a second window) can use the DeepDeck at the same time;
+    // without it the first client may hold the service and the others get AccessDenied
+    let opened = service
+        .OpenAsync(GattSharingMode::SharedReadAndWrite)
+        .map_err(e)?
+        .into_future()
+        .await
+        .map_err(e)?;
+    if opened != GattOpenStatus::Success && opened != GattOpenStatus::AlreadyOpened {
+        return Err(format!(
+            "the configuration service is in use by another program ({opened:?}): close it and try again"
+        ));
+    }
 
     let rx = characteristic(&service, RX).await?;
     let tx = characteristic(&service, TX).await?;

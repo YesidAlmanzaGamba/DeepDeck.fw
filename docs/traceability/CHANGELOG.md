@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-023 | 2026-10-18 | Remove the WiFi portal: web server, SPIFFS image, setup network; WiFi station joins without restart, `wifi.forget`; shared BLE access in the app; I2C mutex created before BLE; fw 0.7.0 | firmware, web, app | (see branch `phase4`) | build, flashed, selftest 0 failures over USB+BLE, heap 64 KB (was 38), app + cc_cli on BLE together | yes (automated); `wifi.set`/`forget`: owner |
 | CH-022 | 2026-10-18 | README rewritten for the reworked project and the app; suggested roadmap R6; `main` fast-forwarded to `command-center` and pushed | docs | (this commit) | links checked | n/a |
 | CH-021 | 2026-10-18 | Command Center: Lighting (effects, live preview, per-layer key painter), WiFi, Device (backup/restore), Log pages | web | 3f93b42 | `ng build`, every page loaded with real data over BLE in the built app | yes (app, automated) |
 | CH-020 | 2026-10-18 | Command Center app shell: Tauri, BLE/USB link manager, DeviceService, Connect and Dashboard | web, app | c06b36e, 0848184 | `cargo build`, app self-test over BLE (0 failures) | yes (automated) |
@@ -34,6 +35,28 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-023: Remove the WiFi portal (R4.5)
+- **Why:** the Command Center does everything the portal did; the portal cost RAM and flash, and
+  its setup network ("AHUYAMA", password "DeepDeck") was open to anyone nearby.
+- **What:**
+  - Firmware: deleted `server.c`, `spiffs.c`, `firmware/spiffs_image`, the AP mode and mDNS use.
+  - `wifi_handles.c` rewritten as a station: joins the stored network at boot, retries 5 times
+    at once and then every 30 s, never opens a setup network.
+  - `wifi.set` joins at once without a restart; new `wifi.forget`; `wifi.status` says `not_set`.
+  - The WiFi password was still logged at boot ("save pass: ..."): gone.
+  - The I2C mutex is created before BLE starts: BLE connection events drew on the OLED before it
+    existed ("mutex handle invalid" at every boot).
+  - Web: removed the Settings page, the HTTP fallback in `DeviceService`, the HTTP-only
+    `ApiService` methods and `deploy-to-firmware.js`; the WiFi page has Forget.
+  - App: BLE opens the service in shared mode. A Command Center window left open made every
+    other client (cc_cli, a second app) fail with AccessDenied.
+  - Partition table unchanged (D-027).
+- **Numbers:** app image 1,391,632 to 1,318,208 bytes; free heap 38 KB to 64 KB at runtime.
+- **Verified:** flashed, selftest 0 failures over USB and BLE, joins the stored network at boot
+  without a restart, app self-test, `cc_cli` over BLE while the app is connected.
+- **Owner to check:** `wifi.set` to another network from the WiFi page (no restart; Bluetooth
+  stays connected), and Forget.
 
 ### CH-017 to CH-021: Phase 3 (Command Center app, lighting v2, OLED redesign)
 - **Plan:** [2026-10-18-app-lighting-oled](../plans/2026-10-18-app-lighting-oled.md). Branch `command-center`.

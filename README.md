@@ -9,7 +9,7 @@ firmware, the protocol and the apps change together.
 | Folder | What it is | Built with |
 |--------|------------|------------|
 | [`firmware/`](firmware/README.md) | ESP32 firmware: keys, knobs, OLED, LEDs, BLE keyboard, configuration protocol | ESP-IDF **4.4.7** |
-| [`web/`](web/README.md) | Angular configurator: the app's screens, and the page the DeepDeck serves over WiFi | Node + Angular 15 |
+| [`web/`](web/README.md) | Angular screens of the Command Center | Node + Angular 15 |
 | `web/src-tauri/` | **DeepDeck Command Center**, the desktop app (Tauri v2, Rust) | Rust + Tauri CLI |
 | [`docs/protocol.md`](docs/protocol.md) | The configuration protocol (BLE, USB and HTTP) | |
 | `tools/cc-cli/` | Command-line protocol client and hardware self-test | Python |
@@ -19,8 +19,9 @@ firmware, the protocol and the apps change together.
 
 - **Configure from a desktop app, not the WiFi portal.**
   - Every setting is one method of a JSON protocol (`firmware/main/config_api.c`).
-  - That protocol runs over Bluetooth, the USB cable, and HTTP.
-  - The firmware still serves the old web page until the app replaces it everywhere.
+  - That protocol runs over Bluetooth and the USB cable.
+  - The WiFi setup network and the web page on the device are gone (firmware 0.7.0). That freed
+    26 KB of RAM, and WiFi now only joins your network, set from the app without a restart.
 - **Lighting v2:**
   - 11 effects: off, reactive, colour cycle, rainbow wave, solid, per-key, breathing, ripple,
     gradient, twinkle, and layer colour;
@@ -79,16 +80,6 @@ idf.py -C firmware -p COM3 flash monitor
 ESP-IDF 4.4 breaks when a component *inside the project* has a `Kconfig` file and the project
 path contains spaces. Keep project components free of `Kconfig` files (use `#ifndef` defaults
 in the source instead) so the firmware builds from any folder.
-
-### Web page in the firmware
-
-```sh
-cd web
-npm install
-npm run build-deepdeck   # builds, gzips and copies the output into firmware/spiffs_image
-```
-
-The next firmware build packs `firmware/spiffs_image` into the `www_0` partition.
 
 ### Desktop app
 

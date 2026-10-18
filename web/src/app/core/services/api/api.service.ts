@@ -6,7 +6,6 @@ import { of, Observable, throwError } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import {catchError, retry} from 'rxjs/operators';
 
-
 interface JsonLayer {
   name: string;
   active: boolean;
@@ -224,37 +223,18 @@ function validateJsonLayer(jsonData: any, uuid_needed: boolean): jsonData is Jso
 })
 export class ApiService {
   public currentConfig: any;
-  public ipAddress: any;
 
-  // Every call goes through DeviceService: BLE/USB in the Command Center, HTTP in the web page.
+  // Every call goes through DeviceService, over BLE or USB in the Command Center.
   // Writes are not retried: over BLE/USB a retry could apply them twice.
   constructor(
     private device: DeviceService,
     private router: Router
   ) {
     this.currentConfig = JSON.parse(localStorage.getItem('current_config'));
-    this.ipAddress =  localStorage.getItem('ipAddress');
-  }
-
-  updateIP(IP:string){
-    this.ipAddress =  IP;
-    localStorage.setItem('ipAddress', IP);
   }
 
   validateJsonLayer(jsonData: any, uuid_needed: boolean) {
     return validateJsonLayer(jsonData, uuid_needed);
-  }
-
-  saveNetwork(data): Observable<any> {
-    return this.device.call('wifi.set', { ssid: data.ssid, pass: data.pass }).pipe(
-      catchError(this.errorHandl)
-    );
-  }
-
-  saveLed(led): Observable<any> {
-    return this.device.call('led.set', led).pipe(
-      catchError(this.errorHandl)
-    );
   }
 
   deleteElement(uuid: string): Observable<any> {
@@ -267,25 +247,6 @@ export class ApiService {
     return this.device.call('device.restart').pipe(
       catchError(this.errorHandl)
     );
-  }
-
-  getCurrentConfigData(force): Observable<any> {
-    if (this.currentConfig && !force) {
-      return of(this.currentConfig);
-    }
-    return this.device.call('device.info').pipe(
-      mergeMap(info => {
-        // field names read by the settings page
-        const configData = { ...info, FWVersion: info.fw ?? info.FWVersion, Mac: info.mac ?? info.Mac };
-        this.setConfigData(configData);
-        return of(configData);
-      })
-    );
-  }
-
-  setConfigData(configData): any {
-    this.currentConfig = configData;
-    localStorage.setItem('current_config', JSON.stringify(this.currentConfig));
   }
 
   getLayersName(): Observable<any> {
