@@ -49,10 +49,14 @@ every product decision is in the [decision log](docs/traceability/DECISIONS.md).
 |------|--------------|
 | Connect | Lists paired DeepDecks (Bluetooth) and USB ports; reconnects by itself to the last one |
 | Dashboard | Firmware, memory, uptime, connection, WiFi; click a layer to make it active (follows the device live) |
-| Keymap, Macros | Edit layers, keys, knobs and macros |
+| Keymap | The 4x4 keys and both knobs as on the device: click a slot then a key, or drag a key onto it; mod-tap per key; export/import a single layer to share |
+| Macros | Key combinations |
+| Tap & sequences | Tap-dance (tap / double tap / hold on one key) and sequences (typed text, key combinations, pauses) |
+| Apps | Switch the DeepDeck's layer when another program comes to the front (Windows) |
 | Lighting | Effect gallery with live preview, sliders and colours; paint key colours per layer (click or drag, fill, copy from another layer) |
 | WiFi | Scan, pick a network, join |
-| Device | Rename, restart, **back up** everything to a JSON file and restore it, restore the defaults |
+| Device | Rename, restart, back up and restore, screen brightness and screen off when idle, start with Windows, tray |
+| Update | Install a new firmware over Bluetooth or USB, with automatic rollback if it fails to start |
 | Log | The firmware's log (over USB) |
 
 **Install.** Build the installer (see below). It ends up at
