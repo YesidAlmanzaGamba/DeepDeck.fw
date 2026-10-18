@@ -30,6 +30,7 @@
 #include "nvs_funcs.h"
 #include "plugin_manager.h"
 #include "rgb_led.h"
+#include "config_task.h"
 
 #define KEY_PRESS_TAG "KEY_PRESS"
 
@@ -143,6 +144,7 @@ void set_current_layout(uint8_t layer)
 	xQueueSend(layer_recieve_q, &current_layout, (TickType_t)0);
 #endif
 	nvs_schedule_current_layer_save(current_layout);
+	config_task_layer_changed(false);
 }
 
 uint32_t prev_time = 0;
@@ -283,6 +285,7 @@ uint8_t *check_key_state(dd_layer *keymap)
 							xQueueSend(layer_recieve_q, &current_layout,
 									   (TickType_t)0);
 #endif
+							config_task_layer_changed(true);
 							ESP_LOGI(KEY_PRESS_TAG,
 									 "Layer modified!, Current layer: %d",
 									 current_layout);
@@ -364,6 +367,7 @@ uint8_t *check_key_state(dd_layer *keymap)
 						xQueueSend(layer_recieve_q, &current_layout,
 								   (TickType_t)0);
 #endif
+						config_task_layer_changed(false);
 						ESP_LOGI(KEY_PRESS_TAG,
 								 "Layer modified!, Current layer: %d ",
 								 current_layout);

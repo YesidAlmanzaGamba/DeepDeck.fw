@@ -16,6 +16,11 @@
 #include "esp_bt_device.h"
 #include "keyboard_config.h"
 #include "nvs_keymaps.h"
+#include "nvs_funcs.h"
+#include "keymap.h"
+#include "keypress_handles.h"
+#include "rgb_led.h"
+#include "uuid.h"
 #include "hal_ble.h"
 #include "config_api.h"
 
@@ -150,10 +155,271 @@ static cJSON *m_device_info(cJSON *params, config_error_t *err)
 }
 
 // ---------------------------------------------------------------------------------------------
+// layers.*
+
+static const char *ROW_KEYS[MATRIX_ROWS] = {"row0", "row1", "row2", "row3"};
+
+static int find_layer(const char *uuid)
+{
+	for (int pos = 0; pos < layers_num; pos++)
+	{
+		if (strcmp(key_layouts[pos].uuid_str, uuid) == 0)
+			return pos;
+	}
+	return -1;
+}
+
+static cJSON *get_uuid_param(cJSON *params, config_error_t *err, int *pos)
+{
+	cJSON *uuid = cJSON_GetObjectItem(params, "uuid");
+	if (!cJSON_IsString(uuid))
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "missing uuid");
+	*pos = find_layer(uuid->valuestring);
+	if (*pos < 0)
+		return fail(err, CONFIG_ERR_NOT_FOUND, "layer not found");
+	return uuid;
+}
+
+static cJSON *layer_to_json(int pos)
+{
+	const dd_layer *layer = &key_layouts[pos];
+	cJSON *json = cJSON_CreateObject();
+	cJSON_AddStringToObject(json, "uuid", layer->uuid_str);
+	cJSON_AddStringToObject(json, "name", layer->name);
+	cJSON_AddBoolToObject(json, "active", layer->active);
+	for (int row = 0; row < MATRIX_ROWS; row++)
+	{
+		cJSON *keys = cJSON_AddArrayToObject(json, ROW_KEYS[row]);
+		for (int col = 0; col < MATRIX_COLS; col++)
+		{
+			cJSON *key = cJSON_CreateObject();
+			cJSON_AddStringToObject(key, "name", layer->key_map_names[row][col]);
+			cJSON_AddNumberToObject(key, "key_code", layer->key_map[row][col]);
+			cJSON_AddItemToArray(keys, key);
+		}
+	}
+	const uint16_t *maps[2] = {layer->left_encoder_map, layer->right_encoder_map};
+	const char *map_keys[2] = {"left_encoder_map", "right_encoder_map"};
+	for (int m = 0; m < 2; m++)
+	{
+		cJSON *map = cJSON_AddObjectToObject(json, map_keys[m]);
+		for (int i = 0; i < ENCODER_SIZE; i++)
+			cJSON_AddNumberToObject(map, encoder_items_names[i], maps[m][i]);
+	}
+	return json;
+}
+
+static bool copy_name(char *dst, size_t size, cJSON *src)
+{
+	if (!cJSON_IsString(src) || strlen(src->valuestring) >= size)
+		return false;
+	strcpy(dst, src->valuestring);
+	return true;
+}
+
+// Fill `layer` from its JSON. Every field is checked: the HTTP handlers this replaces wrote encoder
+// maps without bounds and dereferenced missing rows.
+static bool layer_from_json(cJSON *json, dd_layer *layer, config_error_t *err)
+{
+	memset(layer, 0, sizeof(*layer));
+	if (!copy_name(layer->name, sizeof(layer->name), cJSON_GetObjectItem(json, "name")) || layer->name[0] == '\0')
+	{
+		fail(err, CONFIG_ERR_BAD_REQUEST, "name: 1 to 14 characters");
+		return false;
+	}
+	layer->active = cJSON_IsTrue(cJSON_GetObjectItem(json, "active"));
+
+	for (int row = 0; row < MATRIX_ROWS; row++)
+	{
+		cJSON *keys = cJSON_GetObjectItem(json, ROW_KEYS[row]);
+		if (!cJSON_IsArray(keys) || cJSON_GetArraySize(keys) != MATRIX_COLS)
+		{
+			fail(err, CONFIG_ERR_BAD_REQUEST, "rows: row0..row3 with 4 keys each");
+			return false;
+		}
+		for (int col = 0; col < MATRIX_COLS; col++)
+		{
+			cJSON *key = cJSON_GetArrayItem(keys, col);
+			cJSON *code = cJSON_GetObjectItem(key, "key_code");
+			if (!copy_name(layer->key_map_names[row][col], sizeof(layer->key_map_names[row][col]), cJSON_GetObjectItem(key, "name")) ||
+				!cJSON_IsNumber(code) || code->valueint < 0 || code->valueint > UINT16_MAX)
+			{
+				fail(err, CONFIG_ERR_BAD_REQUEST, "key: name up to 6 characters and a key_code");
+				return false;
+			}
+			layer->key_map[row][col] = code->valueint;
+		}
+	}
+
+	uint16_t *maps[2] = {layer->left_encoder_map, layer->right_encoder_map};
+	const char *map_keys[2] = {"left_encoder_map", "right_encoder_map"};
+	for (int m = 0; m < 2; m++)
+	{
+		cJSON *map = cJSON_GetObjectItem(json, map_keys[m]);
+		if (!cJSON_IsObject(map))
+		{
+			fail(err, CONFIG_ERR_BAD_REQUEST, "missing encoder map");
+			return false;
+		}
+		// by name: the old handlers relied on the order of the JSON keys
+		for (int i = 0; i < ENCODER_SIZE; i++)
+		{
+			cJSON *code = cJSON_GetObjectItem(map, encoder_items_names[i]);
+			maps[m][i] = (cJSON_IsNumber(code) && code->valueint >= 0 && code->valueint <= UINT16_MAX) ? code->valueint : 0;
+		}
+	}
+	return true;
+}
+
+static void refresh_leds(void)
+{
+#ifdef RGB_LEDS
+	rgb_mode_t led_mode;
+	nvs_load_led_mode(&led_mode);
+	xQueueSend(keyled_q, &led_mode, 0);
+#endif
+}
+
+// Layers are re-ordered in NVS (active ones first) when one is written: keep the same layer active
+// when it still exists, instead of jumping back to layer 0 as the old handlers did
+static void reselect_layer(const char *uuid)
+{
+	int pos = find_layer(uuid);
+	set_current_layout(pos >= 0 ? pos : 0);
+	refresh_leds();
+}
+
+static void current_uuid(char *out)
+{
+	strcpy(out, current_layout < layers_num ? key_layouts[current_layout].uuid_str : "");
+}
+
+static cJSON *m_layers_list(cJSON *params, config_error_t *err)
+{
+	cJSON *result = cJSON_CreateObject();
+	cJSON *data = cJSON_AddArrayToObject(result, "data");
+	for (int pos = 0; pos < layers_num; pos++)
+	{
+		cJSON *item = cJSON_CreateObject();
+		cJSON_AddStringToObject(item, "name", key_layouts[pos].name);
+		cJSON_AddNumberToObject(item, "pos", pos);
+		cJSON_AddBoolToObject(item, "active", key_layouts[pos].active);
+		cJSON_AddStringToObject(item, "uuid", key_layouts[pos].uuid_str);
+		cJSON_AddItemToArray(data, item);
+	}
+	return result;
+}
+
+static cJSON *m_layers_get(cJSON *params, config_error_t *err)
+{
+	int pos;
+	if (get_uuid_param(params, err, &pos) == NULL)
+		return NULL;
+	return layer_to_json(pos);
+}
+
+static cJSON *m_layers_create(cJSON *params, config_error_t *err)
+{
+	dd_layer layer;
+	if (!layer_from_json(params, &layer, err))
+		return NULL;
+	if (layers_num >= MAX_LAYOUT_NUMBER)
+		return fail(err, CONFIG_ERR_LIMIT, "maximum number of layers reached");
+
+	cJSON *uuid = cJSON_GetObjectItem(params, "uuid");
+	if (cJSON_IsString(uuid) && uuid->valuestring[0] != '\0')
+	{
+		if (!copy_name(layer.uuid_str, sizeof(layer.uuid_str), uuid))
+			return fail(err, CONFIG_ERR_BAD_REQUEST, "uuid: up to 6 characters");
+	}
+	else
+	{
+		uuid_t uu;
+		uuid_generate(uu);
+		short_uuid_unparse(uu, layer.uuid_str);
+	}
+	if (find_layer(layer.uuid_str) >= 0)
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "uuid already used");
+
+	char active_uuid[SHORT_UUID_STR_LEN];
+	current_uuid(active_uuid);
+	if (nvs_create_new_layer(layer) != ESP_OK)
+		return fail(err, CONFIG_ERR_INTERNAL, "could not store the layer");
+	reselect_layer(active_uuid);
+
+	cJSON *result = cJSON_CreateObject();
+	cJSON_AddStringToObject(result, "uuid", layer.uuid_str);
+	return result;
+}
+
+static cJSON *m_layers_update(cJSON *params, config_error_t *err)
+{
+	int pos;
+	cJSON *uuid = get_uuid_param(params, err, &pos);
+	if (uuid == NULL)
+		return NULL;
+	dd_layer layer;
+	if (!layer_from_json(params, &layer, err))
+		return NULL;
+	strcpy(layer.uuid_str, key_layouts[pos].uuid_str);
+
+	char active_uuid[SHORT_UUID_STR_LEN];
+	current_uuid(active_uuid);
+	if (nvs_write_layer(layer, pos) != ESP_OK)
+		return fail(err, CONFIG_ERR_INTERNAL, "could not store the layer");
+	reselect_layer(active_uuid);
+	return cJSON_CreateObject();
+}
+
+static cJSON *m_layers_delete(cJSON *params, config_error_t *err)
+{
+	int pos;
+	if (get_uuid_param(params, err, &pos) == NULL)
+		return NULL;
+	if (layers_num <= 1)
+		return fail(err, CONFIG_ERR_LIMIT, "the last layer cannot be deleted");
+
+	char active_uuid[SHORT_UUID_STR_LEN];
+	current_uuid(active_uuid);
+	if (nvs_delete_layer(pos) != ESP_OK)
+		return fail(err, CONFIG_ERR_INTERNAL, "could not delete the layer");
+	reselect_layer(active_uuid);
+	return cJSON_CreateObject();
+}
+
+static cJSON *m_layers_restore(cJSON *params, config_error_t *err)
+{
+	if (nvs_restore_default_layers() != ESP_OK || nvs_restore_default_macros() != ESP_OK)
+		return fail(err, CONFIG_ERR_INTERNAL, "could not restore the defaults");
+	set_current_layout(0);
+	refresh_leds();
+	return cJSON_CreateObject();
+}
+
+static cJSON *m_layers_set_active(cJSON *params, config_error_t *err)
+{
+	int pos;
+	if (get_uuid_param(params, err, &pos) == NULL)
+		return NULL;
+	if (!key_layouts[pos].active)
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "layer is disabled");
+	set_current_layout(pos);
+	refresh_leds();
+	return cJSON_CreateObject();
+}
+
+// ---------------------------------------------------------------------------------------------
 // Dispatch
 
 static const config_method_t methods[] = {
 	{"device.info", m_device_info},
+	{"layers.list", m_layers_list},
+	{"layers.get", m_layers_get},
+	{"layers.create", m_layers_create},
+	{"layers.update", m_layers_update},
+	{"layers.delete", m_layers_delete},
+	{"layers.restore", m_layers_restore},
+	{"layers.set_active", m_layers_set_active},
 };
 
 void config_api_init(void)

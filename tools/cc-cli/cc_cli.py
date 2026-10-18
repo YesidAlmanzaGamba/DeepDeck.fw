@@ -223,10 +223,15 @@ async def selftest(clients):
             report.check(err.code == "bad_request", "layers.update without rows rejected")
 
         try:
+            while not main.events.empty():  # events from the writes above
+                main.events.get_nowait()
             await main.request("layers.set_active", {"uuid": uuid})
-            event = await asyncio.wait_for(main.events.get(), 3)
-            report.check(event["event"] == "layer.changed" and event["data"]["uuid"] == uuid,
-                         "layers.set_active sends layer.changed")
+            deadline = time.time() + 3
+            seen = False
+            while not seen and time.time() < deadline:
+                event = await asyncio.wait_for(main.events.get(), max(0.1, deadline - time.time()))
+                seen = event["event"] == "layer.changed" and event["data"].get("uuid") == uuid
+            report.check(seen, "layers.set_active sends layer.changed")
         except Exception as err:
             report.fail(f"layers.set_active / layer.changed: {err}")
 
