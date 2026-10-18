@@ -98,4 +98,10 @@ void halBLEReset(uint8_t exceptDevice);
  * @see hid_ble */
 esp_err_t halBLEInit(uint8_t enableKeyboard, uint8_t enableMedia);
 
+/** @brief Set the advertised BLE name. Call before halBLEInit; empty or NULL keeps the default. */
+void halBLESetDeviceName(const char *name);
+
+/** @brief Advertised BLE name. */
+const char *halBLEGetDeviceName(void);
+
 #endif /* _HAL_BLE_H_ */

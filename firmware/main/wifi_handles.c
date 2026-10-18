@@ -40,6 +40,7 @@
 
 #include "mdns.h"
 #include "spiffs.h"
+#include "config_task.h"
 
 #define MDNS_INSTANCE "DeepG Web Server"
 #define MDNS_HOST_NAME "Ahuyama"
@@ -371,6 +372,7 @@ void wifiInit(void *params)
 	ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_AP_STAIPASSIGNED, &connect_handler, &server));
 	ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &connect_handler, &server));
 	ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &disconnect_handler, &server));
+	config_task_register_wifi_events(); // "wifi.changed" events for the Command Center
 
 	while (true)
 	{

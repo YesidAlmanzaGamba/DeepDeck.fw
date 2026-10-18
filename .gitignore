@@ -101,3 +101,7 @@ pytest_embedded_log/
 #sdkconfig files
 sdkconfig
 sdkconfig.old
+
+# Rust / Node build output (tools, Command Center app)
+target/
+node_modules/

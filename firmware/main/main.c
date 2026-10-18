@@ -75,6 +75,7 @@
 #include "plugins.h"
 #include "deepdeck_tasks.h"
 #include "i2c_bus.h"
+#include "config_task.h"
 #include "wifi_handles.h"
 #include "server.h"
 #include "spiffs.h"
@@ -145,14 +146,16 @@ void app_main()
 
 	size_t available_size = MAX_BT_DEVICENAME_LENGTH;
 	strcpy(config.bt_device_name, GATTS_TAG);
-	nvs_get_str(my_handle, "btname", config.bt_device_name, &available_size);
+	if (ret == ESP_OK)
+		ret = nvs_get_str(my_handle, "btname", config.bt_device_name, &available_size);
 	if (ret != ESP_OK)
 	{
-		ESP_LOGE("MAIN", "error reading NVS - bt name, setting to default");
+		ESP_LOGI("MAIN", "no bt name in NVS, using the default");
 		strcpy(config.bt_device_name, GATTS_TAG);
 	}
 	else
 		ESP_LOGI("MAIN", "bt device name is: %s", config.bt_device_name);
+	nvs_close(my_handle);
 
 	// Set log level of the program
 	esp_log_level_set("*", ESP_LOG_INFO);
@@ -171,8 +174,11 @@ void app_main()
 		ESP_LOGI("MAIN", "restored layer %d", current_layout);
 	}
 
-	// activate keyboard BT stack
+	// activate keyboard BT stack, advertised with the name stored in NVS (device.set_name)
+	halBLESetDeviceName(config.bt_device_name);
 	halBLEInit(1, 1);
+	// Command Center requests over BLE and USB, see docs/protocol.md
+	config_task_start();
 	ESP_LOGI("HIDD", "MAIN finished...");
 
 	// init i2c. The OLED driver does not install the I2C driver itself, it relies on this bus.

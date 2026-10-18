@@ -17,6 +17,7 @@
 #include "esp_log.h"
 #include "hid_dev.h"
 #include "battery_monitor.h"
+#include "config_service.h"
 /// characteristic presentation information
 struct prf_char_pres_fmt {
 	/// Unit (The Unit is a UUID)
@@ -623,6 +624,11 @@ void esp_hidd_prf_cb_hdl(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if,
 			hid_add_id_tbl();
 			esp_ble_gatts_start_service(
 					hidd_le_env.hidd_inst.att_tbl[HIDD_LE_IDX_SVC]);
+			/* Bluedroid builds one attribute table at a time (a second create_attr_tab while one is
+			 * pending asserts in future_ready), so the config service registers only now. */
+			if (config_service_register_app() != ESP_OK) {
+				ESP_LOGE(HID_LE_PRF_TAG, "Register config service failed");
+			}
 		} else {
 			esp_ble_gatts_start_service(param->add_attr_tab.handles[0]);
 		}
@@ -686,6 +692,12 @@ static struct gatts_profile_inst heart_rate_profile_tab[PROFILE_NUM] = {
 
 static void gatts_event_handler(esp_gatts_cb_event_t event,
 		esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
+	/* The config service handles its own events. It must see them first: the code below
+	 * overwrites the profile gatts_if on every register event, which would cut off HID. */
+	if (config_service_gatts_event(event, gatts_if, param)) {
+		return;
+	}
+
 	/* If event is register event, store the gatts_if for each profile */
 	if (event == ESP_GATTS_REG_EVT) {
 		if (param->reg.status == ESP_GATT_OK) {

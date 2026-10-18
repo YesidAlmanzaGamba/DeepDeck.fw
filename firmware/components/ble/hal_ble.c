@@ -22,6 +22,8 @@
  */
 
 #include "hal_ble.h"
+#include "esp_gatt_common_api.h"
+#include "config_service.h"
 
 #define LOG_TAG "hal_ble"
 #define MAX_MTU 517 // Max possible mtu size
@@ -72,6 +74,19 @@ uint8_t activateKeyboard = 0;
 ///@brief Is Media interface active?
 uint8_t activateMedia = 0;
 
+/// @brief Advertised BLE name, set from NVS before halBLEInit (it used to be always GATTS_TAG)
+static char device_name[MAX_BT_DEVICENAME_LENGTH] = GATTS_TAG;
+
+void halBLESetDeviceName(const char *name) {
+	if (name != NULL && name[0] != '\0') {
+		strlcpy(device_name, name, sizeof(device_name));
+	}
+}
+
+const char *halBLEGetDeviceName(void) {
+	return device_name;
+}
+
 uint8_t battery_report[1] = { 0 };
 uint8_t key_report[HID_KEYBOARD_IN_RPT_LEN] = { 0 };
 uint8_t media_report[HID_CC_IN_RPT_LEN] = { 0 };
@@ -84,7 +99,7 @@ static void hidd_event_callback(esp_hidd_cb_event_t event,
 		if (param->init_finish.state == ESP_HIDD_INIT_OK) {
 			//esp_bd_addr_t rand_addr = {0x04,0x11,0x11,0x11,0x11,0x05};
 
-			esp_ble_gap_set_device_name(GATTS_TAG);
+			esp_ble_gap_set_device_name(device_name);
 			esp_ble_gap_config_adv_data(&hidd_adv_data);
 		}
 		break;
@@ -142,6 +157,10 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
 		if (!param->ble_security.auth_cmpl.success) {
 			ESP_LOGE(LOG_TAG, "fail reason = 0x%x",
 					param->ble_security.auth_cmpl.fail_reason);
+		} else {
+			// Ask bonded hosts to refresh their cached GATT database, which may predate the config
+			// service (Windows ignores it: such hosts must re-pair once, see docs/protocol.md)
+			config_service_indicate_service_changed(bd_addr);
 		}
 		break;
 	default:
@@ -326,6 +345,11 @@ esp_err_t halBLEInit(uint8_t enableKeyboard, uint8_t enableMedia) {
 	if (esp_ble_gatts_app_register(HIDD_APP_ID) != ESP_OK) {
 		ESP_LOGE(LOG_TAG, "Register App failed");
 		return ESP_FAIL;
+	}
+	// The Command Center config service registers itself once the HID service is up (hid_device_le_prf.c)
+	// MAX_MTU was defined but never applied: without it every notification is limited to 20 bytes
+	if (esp_ble_gatt_set_local_mtu(MAX_MTU) != ESP_OK) {
+		ESP_LOGE(LOG_TAG, "set local MTU failed");
 	}
 
 	/* set the security iocap & auth_req & key size & init key response key parameters to the stack*/
