@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { DeviceService } from 'src/app/core/services/device/device.service';
+import { describeFile, exportLayer, importLayer } from 'src/app/core/services/device/layer-share';
 import { GROUPS, KeyAction, MODIFIER_NAMES, STATIC_ACTIONS, describe, dynamicActions, isModTap, modTap } from 'src/app/core/services/keyboard/key-catalog';
 
 type KnobAction = 'cw' | 'ccw' | 'single_press' | 'long_press' | 'double_press';
@@ -327,6 +328,39 @@ export class KeymapEditorComponent implements OnInit, OnDestroy {
       this.layer = null;
       this.loadLayers();
       return 'Layer deleted';
+    });
+  }
+
+  /** One layer to a file, with what its keys need (macros, sequences, tap-dances) */
+  exportLayer() {
+    this.run(async () => {
+      const file = await exportLayer((m, p) => this.call(m, p), this.uuid);
+      const safe = String(this.layer.name).replace(/[^A-Za-z0-9_-]+/g, '-');
+      const path = await this.device.saveFile(`deepdeck-layer-${safe}.json`, JSON.stringify(file, null, 2));
+      return path ? `Exported ${describeFile(file)} to ${path}` : 'Export cancelled';
+    });
+  }
+
+  importLayer() {
+    if (this.dirty && !confirm('Discard the unsaved changes of this layer?')) {
+      return;
+    }
+    this.run(async () => {
+      const text = await this.device.openFile();
+      if (!text) {
+        return 'Import cancelled';
+      }
+      const file = JSON.parse(text);
+      if (!confirm(`Add the layer ${describeFile(file)} to this DeepDeck?`)) {
+        return 'Import cancelled';
+      }
+      const created = await importLayer((m, p) => this.call(m, p), file, this.layers.map((l) => l.name));
+      // the new macros and sequences must appear in the key list
+      this.device.call('macros.list').subscribe((r) => ((this.macros = r.macros || []), this.rebuildActions()));
+      this.device.call('keys.sequences.list').subscribe({ next: (r) => ((this.sequences = r.sequences), this.rebuildActions()), error: () => {} });
+      this.device.call('keys.tapdance.list').subscribe({ next: (r) => ((this.tapdance = r.tapdance), this.rebuildActions()), error: () => {} });
+      this.loadLayers(created.uuid);
+      return `Imported as "${created.name}"`;
     });
   }
 

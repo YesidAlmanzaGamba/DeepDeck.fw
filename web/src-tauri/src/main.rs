@@ -51,6 +51,10 @@ async fn send(app: AppHandle, links: State<'_, SharedLinks>, line: String) -> Re
 /// Save text through a native "Save as" dialog. Returns the path, or None if cancelled.
 #[tauri::command]
 async fn save_text_file(default_name: String, contents: String) -> Result<Option<String>, String> {
+    // DD_CC_SAVE_FILE: tests write here instead of showing the dialog
+    if let Ok(path) = std::env::var("DD_CC_SAVE_FILE") {
+        return std::fs::write(&path, contents).map(|_| Some(path)).map_err(|err| err.to_string());
+    }
     tauri::async_runtime::spawn_blocking(move || {
         match rfd::FileDialog::new().set_file_name(&default_name).add_filter("DeepDeck backup", &["json"]).save_file() {
             Some(path) => std::fs::write(&path, contents)
@@ -66,6 +70,10 @@ async fn save_text_file(default_name: String, contents: String) -> Result<Option
 /// Pick and read a text file through a native "Open" dialog. Returns None if cancelled.
 #[tauri::command]
 async fn open_text_file() -> Result<Option<String>, String> {
+    // DD_CC_OPEN_FILE: tests read this instead of showing the dialog
+    if let Ok(path) = std::env::var("DD_CC_OPEN_FILE") {
+        return std::fs::read_to_string(path).map(Some).map_err(|err| err.to_string());
+    }
     tauri::async_runtime::spawn_blocking(move || {
         match rfd::FileDialog::new().add_filter("DeepDeck backup", &["json"]).pick_file() {
             Some(path) => std::fs::read_to_string(path).map(Some).map_err(|err| err.to_string()),

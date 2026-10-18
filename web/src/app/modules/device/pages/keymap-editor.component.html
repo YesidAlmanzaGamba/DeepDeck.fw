@@ -10,6 +10,7 @@
         {{ l.name }}<span class="muted" *ngIf="l.uuid === activeUuid"> · on device</span>
       </button>
       <button class="btn-s" (click)="create()" [disabled]="busy">+ New layer</button>
+      <button class="btn-s" (click)="importLayer()" [disabled]="busy || !device.isApp">Import layer…</button>
     </div>
   </div>
 
@@ -95,6 +96,7 @@
     <div class="dd-row">
       <button class="btn-s" (click)="showOnDevice()" [disabled]="busy">Show this layer on the DeepDeck</button>
       <button class="btn-s" (click)="duplicate()" [disabled]="busy || dirty">Duplicate</button>
+      <button class="btn-s" (click)="exportLayer()" [disabled]="busy || dirty || !device.isApp" title="Save this layer to a file to share">Export layer…</button>
       <button class="btn-s danger" (click)="remove()" [disabled]="busy || layers.length <= 1">Delete layer</button>
       <span class="grow"></span>
       <button class="btn-s danger" (click)="restoreDefaults()" [disabled]="busy">Restore default layers</button>

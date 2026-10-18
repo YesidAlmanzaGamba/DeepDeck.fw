@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-032 | 2026-10-18 | Share a single layer: export to a file with the macros, sequences and tap-dances it uses, import with new slots and rewritten codes; `macros.create` reuses emptied slots | app, firmware | (branch `phase4`) | export + import through the app, every part compared on the device, test data removed | yes (automated) |
 | CH-031 | 2026-10-18 | Mod-tap, tap-dance (16) and sequences (32: text, key chords, pauses) in firmware, protocol and app | firmware, app | (branch `phase4`) | selftest 0 failures; protocol round trips; the DeepDeck typed a sequence into a test window; UI writes checked on the device | partly (owner: mod-tap and tap-dance on the keys) |
 | CH-030 | 2026-10-18 | Bluetooth for the app on macOS and Linux (btleplug backend, same API as the WinRT one) | app | (branch `phase4`) | type-checked against btleplug; Windows BLE and USB self-tests unchanged | no (no Mac or Linux here) |
 | CH-029 | 2026-10-18 | GitHub Actions: firmware (ESP-IDF 4.4.7 container), Windows installer, Rust check on Linux and macOS, draft release on `v*` tags | CI | (branch `phase4`) | YAML parsed; the same steps run locally: clean firmware build from sdkconfig.defaults, `npm ci`, `cargo check --locked` | not run on GitHub yet |
@@ -43,6 +44,24 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-032: Share single layers (R6.8)
+- **What:**
+  - `web/src/app/core/services/device/layer-share.ts`: the file (`format: deepdeck-layer`) holds the
+    layer, its key colours, and the definitions of the macros, sequences and tap-dances used by its
+    keys and knobs (and by those tap-dances). Import creates them in free slots, rewrites the codes,
+    and adds the layer (a name that exists gets a number).
+  - Keymap page: "Export layer…" and "Import layer…".
+  - Firmware: `macros.create` reuses the first emptied macro slot before appending (D-021 left
+    deleted macros as empty slots that were never reused).
+  - App test hooks: `DD_CC_SAVE_FILE` / `DD_CC_OPEN_FILE` replace the file dialogs.
+- **Not portable:** "hold for layer N" keys point at a position, so they hold whatever layer is
+  at that position on the other DeepDeck.
+- **Verified:** a test layer using 2 macros (one on a knob), a sequence, a tap-dance (pointing at
+  the sequence and a macro) and a mod-tap: exported from the app (2 macros, 1 sequence,
+  1 tap-dance found), imported back, and every copy checked on the device (new codes, same
+  content, the tap-dance's references rewritten, the mod-tap kept). Test data removed; two emptied
+  macro slots remain (40 to 42) and are reused by the next macros created.
 
 ### CH-031: Mod-tap, tap-dance, sequences (R6.7)
 - **Why:** the owner asked for the tap-dance / mod-tap that upstream announced (its WIP commit

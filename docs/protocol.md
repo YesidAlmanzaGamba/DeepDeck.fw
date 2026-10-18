@@ -101,7 +101,7 @@ Error codes:
 | `layers.restore` | none | `{}`; restores the default layers **and** macros |
 | `layers.set_active` | `{"uuid":"..."}` | `{}`, then a `layer.changed` event |
 | `macros.list` | none | `{"macros":[Macro,...]}` |
-| `macros.create` | Macro without `keycode` | `{"keycode":540}`: the next free slot; `limit` past 600 |
+| `macros.create` | Macro without `keycode` | `{"keycode":540}`: the first emptied slot, or a new one at the end (0.7.0; older firmware always appended); `limit` past 600 |
 | `macros.update` | Macro with `keycode` | `{}` |
 | `macros.delete` | `{"keycode":512}` | `{}`; the macro is emptied (no keys, empty name) |
 | `macros.restore` | none | `{}` |

@@ -564,11 +564,33 @@ static cJSON *m_macros_create(cJSON *params, config_error_t *err)
 	dd_macros macro;
 	if (!macro_from_json(params, &macro, err))
 		return NULL;
-	// nvs_create_new_macro appends: the key code is decided by the position, not by the client
-	macro.keycode = MACRO_BASE_VAL + total_macros;
-	if (macro.keycode > MACRO_HOLD_MAX_VAL)
-		return fail(err, CONFIG_ERR_LIMIT, "maximum number of macros reached");
-	if (nvs_create_new_macro(macro) != ESP_OK)
+	// A deleted macro is an empty slot (D-021): reuse the first one, otherwise append. The key code
+	// is decided by the position, not by the client.
+	int slot = -1;
+	layouts_lock();
+	for (int i = 0; i < total_macros && slot < 0; i++)
+	{
+		bool empty = user_macros[i].name[0] == '\0';
+		for (int k = 0; k < MACRO_LEN && empty; k++)
+			empty = user_macros[i].key[k] == 0; // KC_NO
+		if (empty)
+			slot = i;
+	}
+	layouts_unlock();
+	esp_err_t res;
+	if (slot >= 0)
+	{
+		macro.keycode = MACRO_BASE_VAL + slot;
+		res = nvs_update_macro(macro);
+	}
+	else
+	{
+		macro.keycode = MACRO_BASE_VAL + total_macros;
+		if (macro.keycode > MACRO_HOLD_MAX_VAL)
+			return fail(err, CONFIG_ERR_LIMIT, "maximum number of macros reached");
+		res = nvs_create_new_macro(macro);
+	}
+	if (res != ESP_OK)
 		return fail(err, CONFIG_ERR_INTERNAL, "could not store the macro");
 	cJSON *result = cJSON_CreateObject();
 	cJSON_AddNumberToObject(result, "keycode", macro.keycode);
