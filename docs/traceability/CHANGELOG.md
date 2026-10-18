@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-031 | 2026-10-18 | Mod-tap, tap-dance (16) and sequences (32: text, key chords, pauses) in firmware, protocol and app | firmware, app | (branch `phase4`) | selftest 0 failures; protocol round trips; the DeepDeck typed a sequence into a test window; UI writes checked on the device | partly (owner: mod-tap and tap-dance on the keys) |
 | CH-030 | 2026-10-18 | Bluetooth for the app on macOS and Linux (btleplug backend, same API as the WinRT one) | app | (branch `phase4`) | type-checked against btleplug; Windows BLE and USB self-tests unchanged | no (no Mac or Linux here) |
 | CH-029 | 2026-10-18 | GitHub Actions: firmware (ESP-IDF 4.4.7 container), Windows installer, Rust check on Linux and macOS, draft release on `v*` tags | CI | (branch `phase4`) | YAML parsed; the same steps run locally: clean firmware build from sdkconfig.defaults, `npm ci`, `cargo check --locked` | not run on GitHub yet |
 | CH-028 | 2026-10-18 | Screen brightness, screen off after N idle minutes, LEDs off with it (`device.settings.*`); Device page card | firmware, app | (branch `phase4`) | screen off at 60 s with a 1-minute timeout, back on with a layer change, page writes the setting | yes (automated); owner: brightness by eye |
@@ -42,6 +43,28 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-031: Mod-tap, tap-dance, sequences (R6.7)
+- **Why:** the owner asked for the tap-dance / mod-tap that upstream announced (its WIP commit
+  f5810e8 holds no such code), and macros with pauses and text.
+- **Firmware (`main/actions.c`):**
+  - new key-code ranges (see protocol.md); no change to `dd_layer`, so no migration;
+  - mod-tap: decided on release (tap) or after 200 ms / when another key goes down (modifier);
+  - tap-dance: tap, double tap (second press within 200 ms) and hold; without a double-tap action
+    the tap fires at once; a key or modifier as the hold action stays down while held;
+  - taps and chords from these actions use the 5 free report slots (18–22);
+  - sequences run in their own task and send reports straight to the BLE keyboard queue;
+  - knobs: any of these codes does its tap;
+  - storage: NVS `tapdance` (one 96-byte blob), `seq` (`s<n>`, 257 bytes each).
+- **App:** "Tap & sequences" page (sequence editor: text, wait, key combination, reorder; test
+  types after 3 s; tap-dance table); in the Keymap page, "When held" turns a plain key into a
+  mod-tap, and the key list has the groups Sequences and Tap-dance.
+- **Verified:** selftest 0 failures; `keys.*` round trips and bad input refused; a sequence
+  (text with capitals, a pause, Shift+A, "!") was typed by the DeepDeck over BLE into a test window,
+  exactly; the page created a sequence and a tap-dance (read back on the device); the "When held"
+  option gives "Tap 7, hold Ctrl". Test entries removed afterwards.
+- **Owner to check:** a mod-tap key (tap and hold) and a tap-dance key (tap, double tap, hold)
+  on the real keys: only physical presses test the timing.
 
 ### CH-030: Bluetooth on macOS and Linux (R4.4, app part)
 - **What:** `src-tauri/src/ble_btleplug.rs` with the same API as `ble_win.rs`; `main.rs` picks one

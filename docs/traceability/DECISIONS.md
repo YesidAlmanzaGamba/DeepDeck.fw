@@ -4,6 +4,7 @@ Product and architecture decisions, newest first. A decision stays valid until a
 
 | ID | Date | Decision | Decided by |
 |----|------|----------|------------|
+| D-032 | 2026-10-18 | Mod-tap, tap-dance and sequences live in new key-code ranges and their own NVS namespaces; text is typed as on a US layout | Claude |
 | D-031 | 2026-10-18 | No battery level and no deep sleep from the app: both are off in the firmware and not verified on this hardware | Claude |
 | D-030 | 2026-10-18 | Firmware updates go over BLE/USB from the app; downloading over WiFi is left for later | Claude |
 | D-029 | 2026-10-18 | Bootloader rollback on: a new firmware must mark itself valid at the end of `app_main` | Claude |
@@ -37,6 +38,11 @@ Product and architecture decisions, newest first. A decision stays valid until a
 | D-001 | 2026-10-16 | One repository for firmware and web, with both histories kept | owner |
 
 ## Details
+
+**D-032:** encoding the action in the key code (mod-tap) or as an index into a separate table
+keeps `dd_layer` unchanged: layers on the device need no migration and older app versions keep
+working. The DeepDeck cannot know the computer's keyboard layout, so text uses US key positions;
+letters, digits and spaces are the same on most layouts, symbols may differ.
 
 **D-031:** `BATT_STAT` reads GPIO35 through a divider that may not exist on the Ahuyama (it is
 powered by USB); enabling it would show invented numbers. `SLEEP_MINS` puts the ESP32 in deep

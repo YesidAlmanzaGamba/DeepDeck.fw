@@ -1,0 +1,87 @@
+<div class="dd-page wide">
+  <h2>Tap-dance and sequences</h2>
+  <div class="dd-error" *ngIf="error">{{ error }}</div>
+  <div class="dd-ok" *ngIf="message">{{ message }}</div>
+
+  <div class="dd-card">
+    <div class="dd-row">
+      <h3 class="grow">Sequences</h3>
+      <button class="btn-p" (click)="newSequence()" [disabled]="editing">+ New sequence</button>
+    </div>
+    <p class="muted">Several steps on one key: typed text, key combinations and pauses.
+      Text is typed as on a US keyboard layout (letters, digits and spaces work on any layout).</p>
+
+    <div class="seq-list" *ngIf="!editing">
+      <div class="dd-device" *ngFor="let s of used()">
+        <div class="grow">
+          <div class="title">{{ s.name || 'Sequence ' + (s.id + 1) }}</div>
+          <div class="muted">{{ s.steps.length }} step(s): {{ s.steps.slice(0, 3).map(stepText, this).join(', ') }}{{ s.steps.length > 3 ? '…' : '' }}</div>
+        </div>
+        <button class="btn-s small" (click)="testSequence(s)">Test</button>
+        <button class="btn-s small" (click)="edit(s)">Edit</button>
+        <button class="btn-s small danger" (click)="deleteSequence(s)">Delete</button>
+      </div>
+      <p class="muted" *ngIf="!used().length">No sequences yet.</p>
+    </div>
+
+    <div class="seq-editor" *ngIf="editing">
+      <div class="dd-row">
+        <input class="dd-input" [(ngModel)]="editing.name" maxlength="15" placeholder="Name (shown in the Keymap page)">
+        <span class="grow"></span>
+        <button class="btn-s" (click)="editing = null">Cancel</button>
+        <button class="btn-p" (click)="saveSequence()" [disabled]="!editing.name || !editing.steps.length">Save</button>
+      </div>
+      <ol class="steps">
+        <li *ngFor="let step of editing.steps; let i = index">
+          <span class="grow">{{ stepText(step) }}</span>
+          <button class="btn-s small" (click)="move(i, -1)" [disabled]="i === 0">↑</button>
+          <button class="btn-s small" (click)="move(i, 1)" [disabled]="i === editing.steps.length - 1">↓</button>
+          <button class="btn-s small danger" (click)="removeStep(i)">✕</button>
+        </li>
+      </ol>
+      <p class="muted" *ngIf="!editing.steps.length">Add steps below.</p>
+
+      <div class="add">
+        <div class="dd-row">
+          <input class="dd-input grow" [(ngModel)]="newText" placeholder="Text to type" maxlength="200" (keyup.enter)="addText()">
+          <button class="btn-s" (click)="addText()" [disabled]="!newText">+ Type text</button>
+        </div>
+        <div class="dd-row">
+          <input class="dd-input" type="number" [(ngModel)]="newDelay" min="0" max="60000" style="width: 110px"> ms
+          <button class="btn-s" (click)="addDelay()">+ Wait</button>
+        </div>
+        <div>
+          <div class="dd-row">
+            <span class="muted grow">Key combination: {{ newKeys.length ? newKeys.map(keyName, this).join(' + ') : 'pick up to 6 keys' }}</span>
+            <button class="btn-s" (click)="addKeys()" [disabled]="!newKeys.length">+ Press keys</button>
+          </div>
+          <div class="chips">
+            <button class="chip" *ngFor="let k of plainKeys" [class.on]="newKeys.includes(k.code)" (click)="toggleKey(k.code)" [title]="k.name">{{ k.label }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dd-card">
+    <h3>Tap-dance</h3>
+    <p class="muted">One key, three actions: a tap, a double tap (within {{ 200 }} ms) and a hold. Put
+      <strong>TD1</strong>…<strong>TD16</strong> on a key in the Keymap page (group Tap-dance).
+      Mod-tap (a key that is a modifier when held) is set per key in the Keymap page.</p>
+    <table class="rules td">
+      <tr><th></th><th>Tap</th><th>Double tap</th><th>Hold</th><th></th></tr>
+      <tr *ngFor="let t of tapdance">
+        <td class="exe">TD{{ t.id + 1 }}</td>
+        <td *ngFor="let field of ['tap', 'double', 'hold']">
+          <select [(ngModel)]="t[field]">
+            <option [ngValue]="0">—</option>
+            <optgroup *ngFor="let g of groups()" [label]="g">
+              <option *ngFor="let a of inGroup(g)" [ngValue]="a.code">{{ a.label }} · {{ a.name }}</option>
+            </optgroup>
+          </select>
+        </td>
+        <td><button class="btn-s small" (click)="saveTapdance(t)">Save</button></td>
+      </tr>
+    </table>
+  </div>
+</div>

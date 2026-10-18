@@ -32,6 +32,7 @@
 #include "device_settings.h"
 #include "rgb_led.h"
 #include "config_task.h"
+#include "actions.h"
 
 #define KEY_PRESS_TAG "KEY_PRESS"
 
@@ -269,6 +270,13 @@ uint8_t *check_key_state(dd_layer *keymap)
 					//  	continue;
 					//  }
 
+					// mod-tap, tap-dance, sequences (actions.c)
+					if (actions_handles(keycode))
+					{
+						actions_press(row * KEYMAP_COLS + col, keycode);
+						continue;
+					}
+
 					// checking for layer hold
 					if ((keycode >= LAYER_HOLD_BASE_VAL) && (keycode <= LAYER_HOLD_MAX_VAL))
 					{
@@ -347,12 +355,14 @@ uint8_t *check_key_state(dd_layer *keymap)
 
 					if (current_report[report_index] == 0)
 					{
+						actions_other_key_pressed(); // a held mod-tap applies its modifier to this key
 						modifier |= check_modifier(keycode);
 						current_report[report_index] = keycode;
 					}
 				}
 				if (matrix_state[row][col - MATRIX_COLS * pad] == 0)
 				{
+					actions_release(row * KEYMAP_COLS + col); // nothing unless it was an action key
 
 					// checking for layer hold release: go back to the layer that was active before the hold
 					uint16_t hold_keycode = key_layouts[prev_layout].key_map[row][col];
@@ -408,7 +418,7 @@ uint8_t *check_key_state(dd_layer *keymap)
 		}
 		memcpy(matrix_prev_state, matrix_state, sizeof(matrix_state));
 	}
-	current_report[0] = modifier;
+	current_report[0] = modifier | actions_tick(current_report);
 	current_report[1] = led_status;
 	return current_report;
 }

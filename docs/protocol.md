@@ -52,6 +52,10 @@ Error codes:
   - 291–308: layer hold
   - 401–402: layer up and down
   - 500–600: macros
+  - 0x2000–0x27FF: mod-tap, `0x2000 + modifier * 256 + key` (modifier 0 LCtrl, 1 LShift, 2 LAlt,
+    3 LGui, 4–7 the right ones): tap = the key, held over 200 ms (or with another key) = the modifier
+  - 0x3000–0x300F: tap-dance 1–16 (`keys.tapdance.*`)
+  - 0x4000–0x401F: sequences 1–32 (`keys.sequences.*`)
 
 **Macro:**
 ```json
@@ -113,6 +117,11 @@ Error codes:
 | `wifi.forget` | none | `{}`; the stored network is erased and WiFi disconnects |
 | `device.settings.get` | none | `{"screen_brightness":255,"screen_off_minutes":0,"leds_off_with_screen":false}` |
 | `device.settings.set` | any of those fields (`screen_off_minutes` 0 = never, up to 1440) | the stored settings; applied at once. Keys, knobs and layer changes wake the screen. `device.info.battery` is `null`: battery monitoring is off on this hardware |
+| `keys.tapdance.list` | none | `{"tapdance":[{"id":0,"key_code":12288,"tap":4,"double":5,"hold":225}, ... 16]}` |
+| `keys.tapdance.set` | `{"id":0,"tap":4,"double":5,"hold":225}` (codes; 0 = nothing; omitted = unchanged) | the entry. A tap-dance cannot contain a tap-dance or mod-tap (sequences are fine) |
+| `keys.sequences.list` | none | `{"sequences":[{"id":0,"key_code":16384,"name":"Sign","steps":[...],"bytes":21}, ... 32]}` |
+| `keys.sequences.set` | `{"id":0,"name":"Sign","steps":[{"text":"Best regards"},{"delay":200},{"keys":[224,6]}]}`; empty name and steps delete it | the entry; `limit` past 240 encoded bytes. `keys`: 1–6 HID codes pressed together (modifiers 224–231 included); `delay`: 0–60000 ms; `text`: up to 200 ASCII characters, typed as on a US layout |
+| `keys.sequences.run` | `{"id":0}` | `{}`; the DeepDeck types the sequence (into the computer's focused window) |
 | `fw.info` | none | `{"version":"0.7.0","idf":"v4.4.7","built":"Oct 18 2026 03:14:05","running":"app0","state":"valid","slot_size":1536000,"chunk_max":2048,"other_version":"0.7.0"}` |
 | `fw.begin` | `{"size":1328672,"sha256":"<64 hex>"}` (SHA-256 of the whole file) | `{"chunk_max":2048,"slot":"app1"}`; starts an update into the other slot (a previous unfinished one is dropped) and asks the BLE host for a fast link |
 | `fw.chunk` | `{"offset":0,"data":"<base64>"}`: at most `chunk_max` bytes, offsets in order | `{"written":2048}`. The first chunk must be a DeepDeck image (`bad_request` otherwise and the update is dropped) |

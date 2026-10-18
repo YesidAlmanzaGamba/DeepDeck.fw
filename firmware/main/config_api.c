@@ -26,6 +26,7 @@
 #include "config_api.h"
 #include "wifi_handles.h"
 #include "device_settings.h"
+#include "actions.h"
 #include "esp_ota_ops.h"
 #include "esp_app_format.h"
 #include "esp_image_format.h"
@@ -1209,6 +1210,222 @@ static cJSON *m_fw_abort(cJSON *params, config_error_t *err)
 }
 
 // ---------------------------------------------------------------------------------------------
+// keys.tapdance.* / keys.sequences.*: actions behind the mod-tap, tap-dance and sequence key
+// codes (R6.7, actions.h)
+
+static bool read_code(cJSON *params, const char *name, uint16_t *out, config_error_t *err)
+{
+	cJSON *item = cJSON_GetObjectItem(params, name);
+	if (item == NULL)
+		return true; // keep
+	if (!cJSON_IsNumber(item) || item->valueint < 0 || item->valueint > UINT16_MAX)
+	{
+		char message[48];
+		snprintf(message, sizeof(message), "%s: a key code", name);
+		fail(err, CONFIG_ERR_BAD_REQUEST, message);
+		return false;
+	}
+	*out = item->valueint;
+	return true;
+}
+
+static cJSON *tapdance_json(int n)
+{
+	tapdance_t td = actions_tapdance_get(n);
+	cJSON *e = cJSON_CreateObject();
+	cJSON_AddNumberToObject(e, "id", n);
+	cJSON_AddNumberToObject(e, "key_code", TAPDANCE_BASE + n);
+	cJSON_AddNumberToObject(e, "tap", td.tap);
+	cJSON_AddNumberToObject(e, "double", td.double_tap);
+	cJSON_AddNumberToObject(e, "hold", td.hold);
+	return e;
+}
+
+static cJSON *m_tapdance_list(cJSON *params, config_error_t *err)
+{
+	cJSON *result = cJSON_CreateObject();
+	cJSON *list = cJSON_AddArrayToObject(result, "tapdance");
+	for (int n = 0; n < TAPDANCE_NUM; n++)
+		cJSON_AddItemToArray(list, tapdance_json(n));
+	return result;
+}
+
+static cJSON *m_tapdance_set(cJSON *params, config_error_t *err)
+{
+	cJSON *id = cJSON_GetObjectItem(params, "id");
+	if (!cJSON_IsNumber(id) || id->valueint < 0 || id->valueint >= TAPDANCE_NUM)
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "id: 0 to 15");
+	tapdance_t td = actions_tapdance_get(id->valueint);
+	if (!read_code(params, "tap", &td.tap, err) || !read_code(params, "double", &td.double_tap, err) ||
+		!read_code(params, "hold", &td.hold, err))
+		return NULL;
+	if (actions_handles(td.tap) || actions_handles(td.double_tap) || actions_handles(td.hold))
+	{
+		// a sequence is fine; a tap-dance or mod-tap inside a tap-dance is not
+		uint16_t codes[3] = {td.tap, td.double_tap, td.hold};
+		for (int i = 0; i < 3; i++)
+			if (actions_handles(codes[i]) && !(codes[i] >= SEQUENCE_BASE && codes[i] < SEQUENCE_BASE + SEQUENCE_NUM))
+				return fail(err, CONFIG_ERR_BAD_REQUEST, "a tap-dance cannot contain another tap-dance or mod-tap");
+	}
+	if (actions_tapdance_set(id->valueint, &td) != ESP_OK)
+		return fail(err, CONFIG_ERR_INTERNAL, "could not store the tap-dance");
+	return tapdance_json(id->valueint);
+}
+
+// steps <-> JSON: [{"keys":[224,6]}, {"delay":200}, {"text":"hello"}]
+static cJSON *steps_json(const sequence_t *seq)
+{
+	cJSON *steps = cJSON_CreateArray();
+	size_t i = 0;
+	while (i + 1 < seq->len)
+	{
+		uint8_t type = seq->steps[i], n = seq->steps[i + 1];
+		cJSON *step = cJSON_CreateObject();
+		if (type == SEQ_STEP_DELAY && i + 3 <= seq->len)
+		{
+			cJSON_AddNumberToObject(step, "delay", seq->steps[i + 1] | (seq->steps[i + 2] << 8));
+			i += 3;
+		}
+		else if ((type == SEQ_STEP_KEYS || type == SEQ_STEP_TEXT) && i + 2 + n <= seq->len)
+		{
+			if (type == SEQ_STEP_KEYS)
+			{
+				cJSON *keys = cJSON_AddArrayToObject(step, "keys");
+				for (int j = 0; j < n; j++)
+					cJSON_AddItemToArray(keys, cJSON_CreateNumber(seq->steps[i + 2 + j]));
+			}
+			else
+			{
+				char text[SEQUENCE_MAX_BYTES + 1];
+				memcpy(text, &seq->steps[i + 2], n);
+				text[n] = '\0';
+				cJSON_AddStringToObject(step, "text", text);
+			}
+			i += 2 + n;
+		}
+		else
+		{
+			cJSON_Delete(step);
+			break;
+		}
+		cJSON_AddItemToArray(steps, step);
+	}
+	return steps;
+}
+
+static bool steps_from_json(cJSON *steps, sequence_t *seq, config_error_t *err)
+{
+	seq->len = 0;
+	cJSON *step;
+	cJSON_ArrayForEach(step, steps)
+	{
+		cJSON *keys = cJSON_GetObjectItem(step, "keys");
+		cJSON *delay = cJSON_GetObjectItem(step, "delay");
+		cJSON *text = cJSON_GetObjectItem(step, "text");
+		size_t need;
+		if (cJSON_IsArray(keys))
+		{
+			int n = cJSON_GetArraySize(keys);
+			need = 2 + n;
+			if (n < 1 || n > 6 || seq->len + need > SEQUENCE_MAX_BYTES)
+				goto too_long;
+			seq->steps[seq->len] = SEQ_STEP_KEYS;
+			seq->steps[seq->len + 1] = n;
+			for (int j = 0; j < n; j++)
+			{
+				cJSON *k = cJSON_GetArrayItem(keys, j);
+				if (!cJSON_IsNumber(k) || k->valueint < 1 || k->valueint > 0xE7)
+				{
+					fail(err, CONFIG_ERR_BAD_REQUEST, "keys: 1 to 6 HID key codes (4-231)");
+					return false;
+				}
+				seq->steps[seq->len + 2 + j] = k->valueint;
+			}
+		}
+		else if (cJSON_IsNumber(delay))
+		{
+			need = 3;
+			if (delay->valueint < 0 || delay->valueint > 60000 || seq->len + need > SEQUENCE_MAX_BYTES)
+				goto too_long;
+			seq->steps[seq->len] = SEQ_STEP_DELAY;
+			seq->steps[seq->len + 1] = delay->valueint & 0xFF;
+			seq->steps[seq->len + 2] = delay->valueint >> 8;
+		}
+		else if (cJSON_IsString(text))
+		{
+			size_t n = strlen(text->valuestring);
+			need = 2 + n;
+			if (n < 1 || n > 200 || seq->len + need > SEQUENCE_MAX_BYTES)
+				goto too_long;
+			seq->steps[seq->len] = SEQ_STEP_TEXT;
+			seq->steps[seq->len + 1] = n;
+			memcpy(&seq->steps[seq->len + 2], text->valuestring, n);
+		}
+		else
+		{
+			fail(err, CONFIG_ERR_BAD_REQUEST, "step: {\"keys\":[..]}, {\"delay\":ms} or {\"text\":\"..\"}");
+			return false;
+		}
+		seq->len += need;
+	}
+	return true;
+too_long:
+	fail(err, CONFIG_ERR_LIMIT, "sequence too long (240 bytes), or a delay over 60 s");
+	return false;
+}
+
+static cJSON *sequence_json(int n)
+{
+	sequence_t seq;
+	actions_sequence_get(n, &seq);
+	cJSON *e = cJSON_CreateObject();
+	cJSON_AddNumberToObject(e, "id", n);
+	cJSON_AddNumberToObject(e, "key_code", SEQUENCE_BASE + n);
+	cJSON_AddStringToObject(e, "name", seq.name);
+	cJSON_AddItemToObject(e, "steps", steps_json(&seq));
+	cJSON_AddNumberToObject(e, "bytes", seq.len);
+	return e;
+}
+
+static cJSON *m_sequences_list(cJSON *params, config_error_t *err)
+{
+	cJSON *result = cJSON_CreateObject();
+	cJSON *list = cJSON_AddArrayToObject(result, "sequences");
+	for (int n = 0; n < SEQUENCE_NUM; n++)
+		cJSON_AddItemToArray(list, sequence_json(n));
+	return result;
+}
+
+static cJSON *m_sequences_set(cJSON *params, config_error_t *err)
+{
+	cJSON *id = cJSON_GetObjectItem(params, "id");
+	cJSON *name = cJSON_GetObjectItem(params, "name");
+	cJSON *steps = cJSON_GetObjectItem(params, "steps");
+	if (!cJSON_IsNumber(id) || id->valueint < 0 || id->valueint >= SEQUENCE_NUM)
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "id: 0 to 31");
+	if (!cJSON_IsString(name) || strlen(name->valuestring) >= SEQUENCE_NAME_LEN || !cJSON_IsArray(steps))
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "name (up to 15 characters) and steps");
+	sequence_t *seq = calloc(1, sizeof(sequence_t));
+	if (seq == NULL)
+		return fail(err, CONFIG_ERR_INTERNAL, "no memory");
+	strlcpy(seq->name, name->valuestring, sizeof(seq->name));
+	bool ok = steps_from_json(steps, seq, err) && actions_sequence_set(id->valueint, seq) == ESP_OK;
+	free(seq);
+	if (!ok)
+		return err->code != CONFIG_OK ? NULL : fail(err, CONFIG_ERR_INTERNAL, "could not store the sequence");
+	return sequence_json(id->valueint);
+}
+
+static cJSON *m_sequences_run(cJSON *params, config_error_t *err)
+{
+	cJSON *id = cJSON_GetObjectItem(params, "id");
+	if (!cJSON_IsNumber(id) || id->valueint < 0 || id->valueint >= SEQUENCE_NUM)
+		return fail(err, CONFIG_ERR_BAD_REQUEST, "id: 0 to 31");
+	actions_run_sequence(id->valueint);
+	return cJSON_CreateObject();
+}
+
+// ---------------------------------------------------------------------------------------------
 // Dispatch
 
 static const config_method_t methods[] = {
@@ -1239,6 +1456,11 @@ static const config_method_t methods[] = {
 	{"wifi.scan", m_wifi_scan},
 	{"wifi.set", m_wifi_set},
 	{"wifi.forget", m_wifi_forget},
+	{"keys.tapdance.list", m_tapdance_list},
+	{"keys.tapdance.set", m_tapdance_set},
+	{"keys.sequences.list", m_sequences_list},
+	{"keys.sequences.set", m_sequences_set},
+	{"keys.sequences.run", m_sequences_run},
 	{"fw.info", m_fw_info},
 	{"fw.begin", m_fw_begin},
 	{"fw.chunk", m_fw_chunk},

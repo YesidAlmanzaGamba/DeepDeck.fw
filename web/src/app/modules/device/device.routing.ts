@@ -9,6 +9,7 @@ import { LogComponent } from './pages/log.component';
 import { UpdateComponent } from './pages/update.component';
 import { KeymapEditorComponent } from './pages/keymap-editor.component';
 import { AppLayersComponent } from './pages/app-layers.component';
+import { ActionsComponent } from './pages/actions.component';
 import { ConnectedGuard } from '../../core/guards/connected.guard';
 
 export const routes: Routes = [
@@ -21,6 +22,7 @@ export const routes: Routes = [
   { path: 'update', component: UpdateComponent, canActivate: [ConnectedGuard] },
   { path: 'keymap', component: KeymapEditorComponent, canActivate: [ConnectedGuard] },
   { path: 'apps', component: AppLayersComponent, canActivate: [ConnectedGuard] },
+  { path: 'actions', component: ActionsComponent, canActivate: [ConnectedGuard] },
 ];
 
 @NgModule({

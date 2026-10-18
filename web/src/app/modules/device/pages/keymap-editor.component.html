@@ -61,6 +61,13 @@
             <div class="dd-row" *ngIf="selectedKey() as k">
               <label class="muted">Label on the screen</label>
               <input class="dd-input label-input" [(ngModel)]="k.name" maxlength="6">
+              <ng-container *ngIf="canHold()">
+                <label class="muted">When held</label>
+                <select [ngModel]="holdModifier()" (ngModelChange)="setHoldModifier($event)">
+                  <option [ngValue]="-1">same key</option>
+                  <option *ngFor="let m of modifierNames; let i = index" [ngValue]="i">{{ m }} (mod-tap)</option>
+                </select>
+              </ng-container>
             </div>
             <div class="dd-row">
               <span class="grow">Does: <strong>{{ describe(selectedCode()) }}</strong></span>

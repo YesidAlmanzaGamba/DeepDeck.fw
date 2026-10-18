@@ -1,7 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { DeviceService } from 'src/app/core/services/device/device.service';
-import { GROUPS, KeyAction, STATIC_ACTIONS, describe, dynamicActions } from 'src/app/core/services/keyboard/key-catalog';
+import { GROUPS, KeyAction, MODIFIER_NAMES, STATIC_ACTIONS, describe, dynamicActions, isModTap, modTap } from 'src/app/core/services/keyboard/key-catalog';
 
 type KnobAction = 'cw' | 'ccw' | 'single_press' | 'long_press' | 'double_press';
 type Slot = { kind: 'key'; index: number } | { kind: 'knob'; side: 'left' | 'right'; action: KnobAction };
@@ -36,6 +36,9 @@ export class KeymapEditorComponent implements OnInit, OnDestroy {
 
   layers: any[] = [];
   macros: any[] = [];
+  sequences: any[] = [];
+  tapdance: any[] = [];
+  readonly modifierNames = MODIFIER_NAMES.slice(0, 4);
   activeUuid = '';
   uuid = '';
   layer: any = null;
@@ -64,6 +67,9 @@ export class KeymapEditorComponent implements OnInit, OnDestroy {
       },
       error: () => {},
     });
+    // firmware 0.7.0 and later: sequences and tap-dance
+    this.device.call('keys.sequences.list').subscribe({ next: (r) => ((this.sequences = r.sequences), this.rebuildActions()), error: () => {} });
+    this.device.call('keys.tapdance.list').subscribe({ next: (r) => ((this.tapdance = r.tapdance), this.rebuildActions()), error: () => {} });
     this.loadLayers();
   }
 
@@ -76,7 +82,7 @@ export class KeymapEditorComponent implements OnInit, OnDestroy {
   }
 
   private rebuildActions() {
-    this.actions = [...STATIC_ACTIONS, ...dynamicActions(this.layers, this.macros)];
+    this.actions = [...STATIC_ACTIONS, ...dynamicActions(this.layers, this.macros, this.sequences, this.tapdance)];
   }
 
   loadLayers(select?: string) {
@@ -162,7 +168,33 @@ export class KeymapEditorComponent implements OnInit, OnDestroy {
     return describe(code, this.actions);
   }
 
+  /** Mod-tap: a plain key that holds a modifier when kept down (-1 = no modifier) */
+  holdModifier(): number {
+    const k = this.selectedKey();
+    return k && isModTap(k.key_code) ? (k.key_code >> 8) & 7 : -1;
+  }
+
+  canHold(): boolean {
+    const k = this.selectedKey();
+    if (!k) {
+      return false;
+    }
+    const base = isModTap(k.key_code) ? k.key_code & 0xff : k.key_code;
+    return base >= 4 && base < 0xe0; // plain keys, not modifiers or special codes
+  }
+
+  setHoldModifier(value: string) {
+    const k = this.selectedKey();
+    const m = Number(value);
+    const base = isModTap(k.key_code) ? k.key_code & 0xff : k.key_code;
+    k.key_code = m < 0 ? base : modTap(base, m);
+  }
+
   short(code: number): string {
+    if (isModTap(code)) {
+      const key = this.actions.find((x) => x.code === (code & 0xff));
+      return `${key ? key.label : code & 0xff}/${MODIFIER_NAMES[(code >> 8) & 7]}`;
+    }
     const a = this.actions.find((x) => x.code === code);
     return code === 0 ? '—' : a ? a.label : String(code);
   }

@@ -45,7 +45,7 @@ In suggested order. R4.5 (remove the portal) comes first because it frees flash 
 | R6.4 | Tray icon and start with Windows; layer status and link-lost notice | done |
 | R6.5 | Battery level, sleep timeout and OLED dimming set from the app | done: screen brightness and idle off; battery and deep sleep deferred (D-031) |
 | R6.6 | CI: build firmware, web and installer on every push, releases with the installer (with R4.4) | written, not yet run on GitHub |
-| R6.7 | Tap-dance and mod-tap (upstream WIP); macros with delays and typed text | proposed |
+| R6.7 | Tap-dance and mod-tap (upstream WIP); macros with delays and typed text | done (sequences); owner to try mod-tap and tap-dance on the keys |
 | R6.8 | Share layers: export/import single layers from the backup format | proposed |
 
 ## 1. Finish what is half-done

@@ -26,6 +26,7 @@
 #include "hal_ble.h"
 #include "keypress_handles.h"
 #include "nvs_keymaps.h"
+#include "actions.h"
 
 static const char *TAG = "rotary_encoder";
 
@@ -336,8 +337,13 @@ void encoder_command(uint8_t command, uint16_t encoder_commands[ENCODER_SIZE]){
     {
         action = encoder_commands[command - 1]; //Have to substract 1 as IDLE is the state 0.
 
+        // mod-tap, tap-dance, sequences: their tap (actions.c)
+        if(actions_handles(action))
+        {
+            actions_tap_code(action);
+        }
         //Review media actions
-        if(action >= KC_MEDIA_NEXT_TRACK && action <= KC_MEDIA_REWIND)
+        else if(action >= KC_MEDIA_NEXT_TRACK && action <= KC_MEDIA_REWIND)
         {
             switch(action)
             {

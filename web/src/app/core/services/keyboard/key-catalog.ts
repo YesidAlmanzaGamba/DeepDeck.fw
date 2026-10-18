@@ -13,6 +13,20 @@ export const LAYER_DOWN = 401;
 export const LAYER_UP = 402;
 export const LAYER_HOLD_BASE = 291; // hold layer N = 291 + N, up to 308
 export const MACRO_BASE = 500;
+// actions.h in the firmware
+export const MODTAP_BASE = 0x2000; // + modifier * 256 + key
+export const MODTAP_MAX = 0x27ff;
+export const TAPDANCE_BASE = 0x3000; // + n, n < 16
+export const SEQUENCE_BASE = 0x4000; // + n, n < 32
+export const MODIFIER_NAMES = ['Ctrl', 'Shift', 'Alt', 'Win', 'RCtrl', 'RShift', 'RAlt', 'RWin'];
+
+export function isModTap(code: number): boolean {
+  return code >= MODTAP_BASE && code <= MODTAP_MAX;
+}
+
+export function modTap(key: number, modifier: number): number {
+  return MODTAP_BASE + modifier * 256 + key;
+}
 
 function range(group: string, first: number, labels: string[], names?: string[]): KeyAction[] {
   return labels.map((label, i) => ({ code: first + i, label, name: names ? names[i] : label, group }));
@@ -83,10 +97,15 @@ export const STATIC_ACTIONS: KeyAction[] = [
   NONE, ...LETTERS, ...NUMBERS, ...EDITING, ...SYMBOLS, ...NAVIGATION, ...FUNCTION_KEYS, ...NUMPAD, ...MODIFIERS, ...MEDIA,
 ];
 
-export const GROUPS = ['All', 'Letters', 'Numbers', 'Editing', 'Symbols', 'Navigation', 'Function', 'Numpad', 'Modifiers', 'Media', 'Layers', 'Macros'];
+export const GROUPS = ['All', 'Letters', 'Numbers', 'Editing', 'Symbols', 'Navigation', 'Function', 'Numpad', 'Modifiers', 'Media', 'Layers', 'Macros', 'Sequences', 'Tap-dance'];
 
 /** Layer keys and macros depend on the device: build them from layers.list and macros.list */
-export function dynamicActions(layers: { name: string; pos: number }[], macros: { name: string; keycode: number; key: number[] }[]): KeyAction[] {
+export function dynamicActions(
+  layers: { name: string; pos: number }[],
+  macros: { name: string; keycode: number; key: number[] }[],
+  sequences: { id: number; name: string; steps: any[] }[] = [],
+  tapdance: { id: number; tap: number; double: number; hold: number }[] = []
+): KeyAction[] {
   const out: KeyAction[] = [
     { code: LAYER_UP, label: 'Layer>', name: 'Next layer', group: 'Layers' },
     { code: LAYER_DOWN, label: '<Layer', name: 'Previous layer', group: 'Layers' },
@@ -101,6 +120,15 @@ export function dynamicActions(layers: { name: string; pos: number }[], macros: 
       out.push({ code: m.keycode, label: m.name.slice(0, 6), name: `Macro "${m.name}"`, group: 'Macros' });
     }
   }
+  for (const s of sequences) {
+    if (s.name || s.steps.length) {
+      out.push({ code: SEQUENCE_BASE + s.id, label: (s.name || `Seq${s.id + 1}`).slice(0, 6), name: `Sequence "${s.name || s.id + 1}"`, group: 'Sequences' });
+    }
+  }
+  for (const t of tapdance) {
+    const used = t.tap || t.double || t.hold;
+    out.push({ code: TAPDANCE_BASE + t.id, label: `TD${t.id + 1}`, name: `Tap-dance ${t.id + 1}${used ? '' : ' (not set)'}`, group: 'Tap-dance' });
+  }
   return out;
 }
 
@@ -108,6 +136,10 @@ export function describe(code: number, all: KeyAction[]): string {
   const a = all.find((x) => x.code === code);
   if (a) {
     return a.name;
+  }
+  if (isModTap(code)) {
+    const key = all.find((x) => x.code === (code & 0xff));
+    return `Tap ${key ? key.name : code & 0xff}, hold ${MODIFIER_NAMES[(code >> 8) & 7]}`;
   }
   if (code >= MACRO_BASE && code <= 600) {
     return `Macro ${code - MACRO_BASE} (empty)`;

@@ -38,6 +38,12 @@ const MENUITEMS: Menu[] = [
         icon: 'add_to_photos',
     },      
     {
+        state: 'actions',
+        name: 'TAP & SEQUENCES',
+        type: 'link',
+        icon: 'touch_app',
+    },
+    {
         state: 'apps',
         name: 'APPS',
         type: 'link',
