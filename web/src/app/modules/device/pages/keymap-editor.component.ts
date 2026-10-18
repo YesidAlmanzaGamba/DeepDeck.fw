@@ -39,6 +39,7 @@ export class KeymapEditorComponent implements OnInit, OnDestroy {
   macros: any[] = [];
   sequences: any[] = [];
   tapdance: any[] = [];
+  commands: any[] = [];
   readonly modifierNames = MODIFIER_NAMES.slice(0, 4);
   activeUuid = '';
   uuid = '';
@@ -71,6 +72,9 @@ export class KeymapEditorComponent implements OnInit, OnDestroy {
     // firmware 0.7.0 and later: sequences and tap-dance
     this.device.call('keys.sequences.list').subscribe({ next: (r) => ((this.sequences = r.sequences), this.rebuildActions()), error: () => {} });
     this.device.call('keys.tapdance.list').subscribe({ next: (r) => ((this.tapdance = r.tapdance), this.rebuildActions()), error: () => {} });
+    if (this.device.isApp) {
+      (window as any).__TAURI__.core.invoke('app_commands_get').then((st: any) => ((this.commands = st.commands), this.rebuildActions()), () => {});
+    }
     this.loadLayers();
   }
 
@@ -83,7 +87,7 @@ export class KeymapEditorComponent implements OnInit, OnDestroy {
   }
 
   private rebuildActions() {
-    this.actions = [...STATIC_ACTIONS, ...dynamicActions(this.layers, this.macros, this.sequences, this.tapdance)];
+    this.actions = [...STATIC_ACTIONS, ...dynamicActions(this.layers, this.macros, this.sequences, this.tapdance, this.commands)];
   }
 
   loadLayers(select?: string) {

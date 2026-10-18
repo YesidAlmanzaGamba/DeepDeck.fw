@@ -6,6 +6,7 @@
  * - mod-tap   0x2000 + modifier * 256 + key: tap = the key, hold = the modifier (0 LCtrl .. 7 RGui)
  * - tap-dance 0x3000 + n (n < 16): one action for a tap, one for a double tap, one for a hold
  * - sequence  0x4000 + n (n < 32): key chords, pauses and typed text, one after the other
+ * - app command 0x5000 + n (n < 32): tells the Command Center to run its command n (event key.app)
  */
 
 #ifndef ACTIONS_H_
@@ -21,6 +22,8 @@
 #define TAPDANCE_NUM 16
 #define SEQUENCE_BASE 0x4000
 #define SEQUENCE_NUM 32
+#define APPKEY_BASE 0x5000
+#define APPKEY_NUM 32
 #define TAPPING_TERM_MS 200
 
 #define SEQUENCE_NAME_LEN 16

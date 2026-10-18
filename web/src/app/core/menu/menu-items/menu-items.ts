@@ -44,6 +44,13 @@ const MENUITEMS: Menu[] = [
         icon: 'touch_app',
     },
     {
+        state: 'commands',
+        name: 'COMMANDS',
+        type: 'link',
+        icon: 'code',
+        appOnly: true,
+    },
+    {
         state: 'apps',
         name: 'APPS',
         type: 'link',

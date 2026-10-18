@@ -1283,10 +1283,11 @@ static cJSON *m_tapdance_set(cJSON *params, config_error_t *err)
 		return NULL;
 	if (actions_handles(td.tap) || actions_handles(td.double_tap) || actions_handles(td.hold))
 	{
-		// a sequence is fine; a tap-dance or mod-tap inside a tap-dance is not
+		// a sequence or app command is fine; a tap-dance or mod-tap inside a tap-dance is not
 		uint16_t codes[3] = {td.tap, td.double_tap, td.hold};
 		for (int i = 0; i < 3; i++)
-			if (actions_handles(codes[i]) && !(codes[i] >= SEQUENCE_BASE && codes[i] < SEQUENCE_BASE + SEQUENCE_NUM))
+			if (actions_handles(codes[i]) && !(codes[i] >= SEQUENCE_BASE && codes[i] < SEQUENCE_BASE + SEQUENCE_NUM) &&
+				!(codes[i] >= APPKEY_BASE && codes[i] < APPKEY_BASE + APPKEY_NUM))
 				return fail(err, CONFIG_ERR_BAD_REQUEST, "a tap-dance cannot contain another tap-dance or mod-tap");
 	}
 	if (actions_tapdance_set(id->valueint, &td) != ESP_OK)

@@ -21,6 +21,7 @@
 #include "nvs_keymaps.h"
 #include "nvs_funcs.h"
 #include "hal_ble.h"
+#include "config_task.h"
 
 #define TAG "actions"
 #define NS_TAPDANCE "tapdance"
@@ -101,11 +102,24 @@ static void send_media(uint16_t code)
 	xQueueSend(media_q, media, 0);
 }
 
+// App command: the Command Center runs the command the user set for it (e.g. a herdr CLI call)
+static void send_app_key(uint16_t code)
+{
+	cJSON *data = cJSON_CreateObject();
+	cJSON_AddNumberToObject(data, "id", code - APPKEY_BASE);
+	config_task_broadcast_event("key.app", data);
+}
+
 void actions_tap_code(uint16_t code)
 {
 	chord_t c = {0};
 	if (code == KC_NO)
 		return;
+	if (code >= APPKEY_BASE && code < APPKEY_BASE + APPKEY_NUM)
+	{
+		send_app_key(code);
+		return;
+	}
 	if (code >= MODTAP_BASE && code <= MODTAP_MAX)
 		code = code & 0xFF; // tapped: just the key
 	if (code >= TAPDANCE_BASE && code < TAPDANCE_BASE + TAPDANCE_NUM)
@@ -192,7 +206,8 @@ bool actions_handles(uint16_t code)
 {
 	return (code >= MODTAP_BASE && code <= MODTAP_MAX) ||
 		   (code >= TAPDANCE_BASE && code < TAPDANCE_BASE + TAPDANCE_NUM) ||
-		   (code >= SEQUENCE_BASE && code < SEQUENCE_BASE + SEQUENCE_NUM);
+		   (code >= SEQUENCE_BASE && code < SEQUENCE_BASE + SEQUENCE_NUM) ||
+		   (code >= APPKEY_BASE && code < APPKEY_BASE + APPKEY_NUM);
 }
 
 static bool is_modtap(uint16_t code)
@@ -233,6 +248,11 @@ void actions_press(uint8_t pos, uint16_t code)
 	if (code >= SEQUENCE_BASE && code < SEQUENCE_BASE + SEQUENCE_NUM)
 	{
 		actions_run_sequence(code - SEQUENCE_BASE);
+		return;
+	}
+	if (code >= APPKEY_BASE && code < APPKEY_BASE + APPKEY_NUM)
+	{
+		send_app_key(code);
 		return;
 	}
 	if (k->state == ST_WAIT && k->code == code)

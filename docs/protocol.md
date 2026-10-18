@@ -56,6 +56,8 @@ Error codes:
     3 LGui, 4–7 the right ones): tap = the key, held over 200 ms (or with another key) = the modifier
   - 0x3000–0x300F: tap-dance 1–16 (`keys.tapdance.*`)
   - 0x4000–0x401F: sequences 1–32 (`keys.sequences.*`)
+  - 0x5000–0x501F: app commands 1–32: the DeepDeck sends the event `key.app` and the Command Center
+    runs the command the user set for it (stored in the app, not on the device)
 
 **Macro:**
 ```json
@@ -140,6 +142,7 @@ touched.
 | Event | Data | When |
 |-------|------|------|
 | `layer.changed` | `{"index":1,"uuid":"...","name":"Numpad","hold":false}` | Any layer change: keys, knobs, the app, or a layer-hold key (`hold: true` while held) |
+| `key.app` | `{"id":0}` | A key or knob with app command `0x5000 + id` was used: the Command Center runs that command |
 | `wifi.changed` | `{"state":"connected","ip":"192.168.1.20"}` | The WiFi station connects or loses its IP |
 
 ## Versioning

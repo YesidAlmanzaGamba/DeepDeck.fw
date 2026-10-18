@@ -1,0 +1,54 @@
+<div class="dd-page">
+  <h2>Computer commands</h2>
+  <div class="dd-error" *ngIf="error">{{ error }}</div>
+  <div class="dd-ok" *ngIf="message">{{ message }}</div>
+
+  <div class="dd-card">
+    <p class="muted" style="margin-top: 0">
+      A key set to <strong>Command N</strong> makes this app run command N on this computer, whatever window is
+      in front: for example <code>herdr pane focus --direction right</code> moves herdr to the next pane while you
+      work in another window. The Command Center must be running (the tray is enough) and connected.
+      Commands run like in a terminal (<code>cmd</code> on Windows, <code>sh</code> on macOS and Linux).
+    </p>
+    <div class="dd-row">
+      <h3 class="grow">Commands</h3>
+      <span class="muted" *ngIf="dirty">Not saved</span>
+      <button class="btn-s" (click)="addEmpty()">+ Empty command</button>
+      <button class="btn-p" (click)="save()" [disabled]="!dirty">Save</button>
+    </div>
+    <table class="rules cmds" *ngIf="used().length">
+      <tr><th>Key</th><th>Name</th><th>Command</th><th></th></tr>
+      <tr *ngFor="let c of used()">
+        <td class="exe">Cmd{{ c.id + 1 }}</td>
+        <td><input class="dd-input" [(ngModel)]="c.name" (ngModelChange)="changed()" maxlength="24"></td>
+        <td class="wide"><input class="dd-input mono" [(ngModel)]="c.command" (ngModelChange)="changed()" placeholder="e.g. herdr tab create"></td>
+        <td>
+          <button class="btn-s small" (click)="test(c)" [disabled]="!c.command">Test</button>
+          <button class="btn-s small danger" (click)="clear(c)">Remove</button>
+        </td>
+      </tr>
+    </table>
+    <p class="muted" *ngIf="!used().length">No commands yet: add one of the herdr ones below, or an empty one.</p>
+  </div>
+
+  <div class="dd-card">
+    <h3>Ready-made: herdr</h3>
+    <p class="muted">Needs herdr installed and on the PATH (<code>herdr --help</code> works in a terminal). Click to add.</p>
+    <div *ngFor="let g of presets">
+      <div class="muted" style="margin: 8px 0 4px">{{ g.group }}</div>
+      <div class="chips">
+        <button class="chip" *ngFor="let p of g.items" (click)="addPreset(p)" [title]="p.command">{{ p.name }}</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="dd-card" *ngIf="recent.length">
+    <h3>Recently run</h3>
+    <div class="ran" *ngFor="let r of recent" [class.bad]="!r.ok">
+      <span class="muted">{{ when(r.at) }}</span>
+      <strong>{{ r.name || 'Cmd' + (r.id + 1) }}</strong>
+      <span>{{ r.ok ? 'ok' : 'failed' + (r.code !== null && r.code !== undefined ? ' (exit ' + r.code + ')' : '') }}</span>
+      <code *ngIf="r.output">{{ r.output }}</code>
+    </div>
+  </div>
+</div>

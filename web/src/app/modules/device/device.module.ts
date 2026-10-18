@@ -12,11 +12,12 @@ import { UpdateComponent } from './pages/update.component';
 import { KeymapEditorComponent } from './pages/keymap-editor.component';
 import { AppLayersComponent } from './pages/app-layers.component';
 import { ActionsComponent } from './pages/actions.component';
+import { CommandsComponent } from './pages/commands.component';
 import { ColorPickerModule } from 'ngx-color-picker';
 
 /** Command Center pages: connect, dashboard, keymap, lighting, wifi, device, update, log */
 @NgModule({
   imports: [CommonModule, SharedModule, DeviceRoutingModule, ColorPickerModule],
-  declarations: [ConnectComponent, DashboardComponent, LightingComponent, WifiComponent, ManageComponent, LogComponent, UpdateComponent, KeymapEditorComponent, AppLayersComponent, ActionsComponent],
+  declarations: [ConnectComponent, DashboardComponent, LightingComponent, WifiComponent, ManageComponent, LogComponent, UpdateComponent, KeymapEditorComponent, AppLayersComponent, ActionsComponent, CommandsComponent],
 })
 export class DeviceModule {}

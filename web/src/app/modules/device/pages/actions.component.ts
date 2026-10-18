@@ -46,15 +46,19 @@ export class ActionsComponent implements OnInit {
       error: () => {},
     });
     this.device.call('macros.list').subscribe({ next: (r) => this.rebuild(r.macros), error: () => {} });
+    if (this.device.isApp) {
+      (window as any).__TAURI__.core.invoke('app_commands_get').then((st: any) => ((this.commands = st.commands), this.rebuild()), () => {});
+    }
   }
 
   private macros: any[] = [];
+  private commands: any[] = [];
   private rebuild(macros?: any[]) {
     if (macros) {
       this.macros = macros;
     }
     // what a tap-dance can do: keys, media, layers, macros, sequences (not another tap-dance)
-    this.actions = [...STATIC_ACTIONS, ...dynamicActions([], this.macros, this.sequences, [])];
+    this.actions = [...STATIC_ACTIONS, ...dynamicActions([], this.macros, this.sequences, [], this.commands)];
   }
 
   groups(): string[] {

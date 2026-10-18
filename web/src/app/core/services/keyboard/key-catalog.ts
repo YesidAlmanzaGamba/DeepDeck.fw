@@ -18,6 +18,7 @@ export const MODTAP_BASE = 0x2000; // + modifier * 256 + key
 export const MODTAP_MAX = 0x27ff;
 export const TAPDANCE_BASE = 0x3000; // + n, n < 16
 export const SEQUENCE_BASE = 0x4000; // + n, n < 32
+export const APPKEY_BASE = 0x5000; // + n, n < 32: the Command Center runs command n
 export const MODIFIER_NAMES = ['Ctrl', 'Shift', 'Alt', 'Win', 'RCtrl', 'RShift', 'RAlt', 'RWin'];
 
 export function isModTap(code: number): boolean {
@@ -97,14 +98,15 @@ export const STATIC_ACTIONS: KeyAction[] = [
   NONE, ...LETTERS, ...NUMBERS, ...EDITING, ...SYMBOLS, ...NAVIGATION, ...FUNCTION_KEYS, ...NUMPAD, ...MODIFIERS, ...MEDIA,
 ];
 
-export const GROUPS = ['All', 'Letters', 'Numbers', 'Editing', 'Symbols', 'Navigation', 'Function', 'Numpad', 'Modifiers', 'Media', 'Layers', 'Macros', 'Sequences', 'Tap-dance'];
+export const GROUPS = ['All', 'Letters', 'Numbers', 'Editing', 'Symbols', 'Navigation', 'Function', 'Numpad', 'Modifiers', 'Media', 'Layers', 'Macros', 'Sequences', 'Tap-dance', 'Commands'];
 
 /** Layer keys and macros depend on the device: build them from layers.list and macros.list */
 export function dynamicActions(
   layers: { name: string; pos: number }[],
   macros: { name: string; keycode: number; key: number[] }[],
   sequences: { id: number; name: string; steps: any[] }[] = [],
-  tapdance: { id: number; tap: number; double: number; hold: number }[] = []
+  tapdance: { id: number; tap: number; double: number; hold: number }[] = [],
+  commands: { id: number; name: string; command: string }[] = []
 ): KeyAction[] {
   const out: KeyAction[] = [
     { code: LAYER_UP, label: 'Layer>', name: 'Next layer', group: 'Layers' },
@@ -124,6 +126,9 @@ export function dynamicActions(
     if (s.name || s.steps.length) {
       out.push({ code: SEQUENCE_BASE + s.id, label: (s.name || `Seq${s.id + 1}`).slice(0, 6), name: `Sequence "${s.name || s.id + 1}"`, group: 'Sequences' });
     }
+  }
+  for (const c of commands) {
+    out.push({ code: APPKEY_BASE + c.id, label: (c.name || `Cmd${c.id + 1}`).slice(0, 6), name: `Command: ${c.name || c.command}`, group: 'Commands' });
   }
   for (const t of tapdance) {
     const used = t.tap || t.double || t.hold;

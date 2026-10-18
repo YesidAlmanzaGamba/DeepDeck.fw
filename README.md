@@ -53,6 +53,7 @@ every product decision is in the [decision log](docs/traceability/DECISIONS.md).
 | Macros | Key combinations |
 | Tap & sequences | Tap-dance (tap / double tap / hold on one key) and sequences (typed text, key combinations, pauses) |
 | Apps | Switch the DeepDeck's layer when another program comes to the front (Windows) |
+| Commands | Keys that run a command on the computer whatever window is in front, e.g. herdr: `herdr pane focus --direction right` (presets included) |
 | Lighting | Effect gallery with live preview, sliders and colours; paint key colours per layer (click or drag, fill, copy from another layer) |
 | WiFi | Scan, pick a network, join |
 | Device | Rename, restart, back up and restore, screen brightness and screen off when idle, start with Windows, tray |

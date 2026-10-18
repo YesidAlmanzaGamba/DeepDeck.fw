@@ -10,6 +10,7 @@ mod ble;
 #[cfg(not(windows))]
 #[path = "ble_btleplug.rs"]
 mod ble;
+mod app_commands;
 mod app_layers;
 mod desktop;
 mod firmware;
@@ -145,6 +146,22 @@ fn firmware_forget(app: AppHandle, path: String) -> Result<(), String> {
     firmware::forget(&app, &path)
 }
 
+#[tauri::command]
+fn app_commands_get(cmds: State<'_, app_commands::SharedAppCommands>) -> app_commands::State {
+    cmds.get()
+}
+
+#[tauri::command]
+fn app_commands_set(app: AppHandle, cmds: State<'_, app_commands::SharedAppCommands>, value: Vec<app_commands::AppCommand>) -> Result<(), String> {
+    cmds.set(&app, value)
+}
+
+/// Test a command from the window, as if its key was pressed
+#[tauri::command]
+fn app_commands_run(app: AppHandle, cmds: State<'_, app_commands::SharedAppCommands>, id: u8) {
+    cmds.inner().clone().run(&app, id);
+}
+
 fn main() {
     tauri::Builder::default()
         // a second start (Start menu, autostart) shows the running app instead
@@ -171,6 +188,9 @@ fn main() {
             let app_rules = app_layers::AppLayers::load(app.handle());
             app_rules.start(app.handle().clone(), links.clone());
             app.manage(app_rules);
+            let commands = app_commands::AppCommands::load(app.handle());
+            commands.start(app.handle());
+            app.manage(commands);
             app.manage(links);
             if std::env::var("DD_CC_SELFTEST").is_ok() {
                 selftest::run(app.handle().clone());
@@ -193,7 +213,10 @@ fn main() {
             firmware_list,
             firmware_load,
             firmware_remember,
-            firmware_forget
+            firmware_forget,
+            app_commands_get,
+            app_commands_set,
+            app_commands_run
         ])
         .run(tauri::generate_context!())
         .expect("error while running the DeepDeck Command Center");

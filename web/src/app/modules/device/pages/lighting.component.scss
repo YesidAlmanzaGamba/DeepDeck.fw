@@ -78,3 +78,9 @@ select { background: #1f1f22; color: #ddd; border: 1px solid #4a4a50; border-rad
 .chip.on { border-color: #dc9f10; color: #dc9f10; }
 .td select { max-width: 210px; }
 .td th { text-align: left; color: #9a9a9a; font-weight: 400; padding-right: 10px; }
+
+.cmds { width: 100%; td.wide { width: 60%; } td .dd-input { width: 100%; box-sizing: border-box; } }
+.mono { font-family: Consolas, monospace; font-size: 13px; }
+.ran { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid #333;
+  code { flex-basis: 100%; white-space: pre-wrap; color: #aaa; font-size: 12px; }
+  &.bad strong { color: #ff9a96; } }

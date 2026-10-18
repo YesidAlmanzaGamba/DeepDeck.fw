@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-035 | 2026-10-18 | App command keys: a DeepDeck key makes the Command Center run a command on the computer (herdr presets) | firmware, app | (branch `phase4`) | a `key.app` event ran the command (file written, logged); selftest 0 failures | partly (owner: a real key press) |
 | CH-034 | 2026-10-18 | Firmware in the app (bundled + history of installed images) on the Update page; installers for Windows, macOS and Linux in CI; installation manual | app, CI, docs | (branch `phase4`) | install from the list over USB (history copy kept); workflow parsed; first CI run green | yes (automated) |
 | CH-033 | 2026-10-18 | App layout fills the window (flex shell, collapsing menu, fluid pages) and opens maximized | app | 6ee264c | screenshots at 1920x1040 and 1000x680 | n/a |
 | CH-032 | 2026-10-18 | Share a single layer: export to a file with the macros, sequences and tap-dances it uses, import with new slots and rewritten codes; `macros.create` reuses emptied slots | app, firmware | (branch `phase4`) | export + import through the app, every part compared on the device, test data removed | yes (automated) |
@@ -46,6 +47,24 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-035: App command keys (herdr and anything with a CLI)
+- **Why:** the owner builds a layer for herdr (a terminal multiplexer for AI coding agents) and
+  wants its keys to switch panes and tabs while working in another window. Plain key presses only
+  reach the window in front; herdr has a CLI (`herdr pane focus --direction right`, `herdr tab
+  create`, ...) that works from anywhere.
+- **What:**
+  - Firmware (`actions.c`): codes 0x5000–0x501F send the event `key.app {"id": n}` (keys, knobs,
+    tap-dance actions).
+  - App (`app_commands.rs`): runs command n with the system shell (Windows `cmd /C`, without a
+    console window; elsewhere `sh -c`), in the background, logs the result. Stored in
+    `<app config dir>/app-commands.json`.
+  - Commands page: 32 commands (name + command, Test), herdr presets (pane focus left/right/up/
+    down, split right/down, new tab), recent runs. The Keymap page lists them under Commands.
+- **Verified:** an injected `key.app` event ran a command (file written, logged "ok"); the page
+  saves presets and lists them; firmware selftest 0 failures.
+- **Owner to check:** put "Pane right" on a key of the herdr layer, press it while another window
+  is in front, and watch herdr switch panes.
 
 ### CH-034: Firmware in the app, installers for every OS, manual
 - **Why:** the owner wants to install firmware without browsing for files, keeping earlier ones,
