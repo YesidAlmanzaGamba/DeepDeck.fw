@@ -1,6 +1,6 @@
 # Command Center Phase 3, new lighting system, OLED redesign
 
-- **Status:** in progress
+- **Status:** done (2026-10-18); owner checks on the device are listed in CHANGELOG CH-017 to CH-021
 - **Roadmap items:** R4.3, R5.1 (OLED and menu), R5.2 (lighting v2)
 - **Areas:** firmware, app
 

@@ -60,18 +60,33 @@ Error codes:
 - `keycode` is in 500–600 and is the macro's position (500 + index), `name` is at most 9 characters,
   and `key` holds up to 5 HID key codes (0–255, modifiers 224–231) pressed together (0 = none).
 
-**LED mode:**
+**LED mode** (lighting v2, firmware 0.6.0 and later):
 ```json
-{"mode":4,"H":0,"S":255,"V":128,"speed":10,"rgb":[255,0,0]}
+{"effect":6,"brightness":128,"speed":120,"color1":[255,136,0],"color2":[255,255,255],"reactive":true,
+ "mode":6,"H":0,"S":255,"V":128,"rgb":[255,136,0]}
 ```
-- Modes: 0 off, 1 pulsating, 2 progressive, 3 rainbow, 4 solid, 5 solid per key.
-- `rgb` is used by modes 4 and 5.
+- Effects: 0 off, 1 reactive, 2 colour cycle, 3 rainbow wave, 4 solid, 5 per-key (the active layer's
+  key colours), 6 breathing, 7 ripple, 8 gradient, 9 twinkle, 10 layer colour. `led.effects` lists them
+  with the parameters each one uses; ids 0–5 kept their old meaning.
+- `brightness`, `speed`: 0–255. `color1`, `color2`: `[r,g,b]`. `reactive`: pressed keys light in
+  `color2` on top of any effect.
+- `mode`, `H`, `S`, `V` and `rgb` are the old fields, still returned and accepted for the web page:
+  `mode` is `effect`, `rgb` is `color1`, and `V` sets the brightness when `brightness` is not given.
+
+**Key colours of a layer:**
+```json
+{"uuid":"87402f","keys":[[255,0,0], ... 16 colours, row by row],"layer":[255,136,0],"custom":true}
+```
+- `layer` is the layer's own colour (effect 10 and the 2 notification LEDs).
+- `custom` is false while the layer has no stored colours. The defaults are then `color1` on keys
+  that have a key code, off on empty keys, and a fixed colour per layer position.
+- Stored in NVS namespace `led_keys`, one blob per layer, outside the layer itself.
 
 ## Methods
 
 | Method | Params | Result |
 |--------|--------|--------|
-| `device.info` | none | `{"proto":1,"fw":"0.6.0","name":"Ahuyama","mac":"c0:49:ef:51:06:7a","uptime_s":120,"heap":43000,"layer":{"index":0,"uuid":"...","name":"Media"},"wifi":{"state":"connected","ssid":"...","ip":"192.168.1.20","rssi":-50}}` |
+| `device.info` | none | `{"proto":1,"fw":"0.6.0","name":"Ahuyama","mac":"c0:49:ef:51:06:7a","uptime_s":120,"heap":43000,"layer":{"index":0,"uuid":"...","name":"Media"},"wifi":{"state":"connected","ssid":"...","ip":"192.168.1.20","rssi":-50},"ble_connected":true,"app_connected":false}`; `ble_connected`: a computer uses it as a keyboard, `app_connected`: an app is on the BLE config service |
 | `device.restart` | none | `{}`; the device restarts about 300 ms later |
 | `device.set_name` | `{"name":"Ahuyama"}` (1–20 characters) | `{}`; the BLE name changes after the next restart |
 | `layers.list` | none | `{"data":[{"name":"Media","pos":0,"active":true,"uuid":"..."}]}` |
@@ -87,7 +102,11 @@ Error codes:
 | `macros.delete` | `{"keycode":512}` | `{}`; the macro is emptied (no keys, empty name) |
 | `macros.restore` | none | `{}` |
 | `led.get` | none | LED mode |
-| `led.set` | LED mode (fields may be omitted) | `{}` |
+| `led.set` | LED mode (fields may be omitted), plus `save` (default `true`) | `{}`; applied at once. `save:false` only previews: nothing is written to flash and the next restart shows the stored mode |
+| `led.effects` | none | `{"effects":[{"id":6,"name":"Breathing","uses":["speed","color1"]}, ...]}` |
+| `led.keys.get` | `{"uuid":"..."}` | Key colours of that layer |
+| `led.keys.set` | `{"uuid":"...","keys":[16 x [r,g,b]],"layer":[r,g,b],"save":true}`; `keys` and `layer` may be omitted | `{}`; shown at once if it is the active layer; `save:false` previews |
+| `led.keys.reset` | `{"uuid":"..."}` | `{}`; back to the defaults |
 | `wifi.status` | none | `{"state":"connected"\|"connecting"\|"ap"\|"off","ssid":"...","ip":"...","rssi":-50}` |
 | `wifi.scan` | none | `{"aps":[{"ssid":"...","rssi":-40,"channel":6,"auth":"WPA2_PSK"}]}`; takes about 2–3 s |
 | `wifi.set` | `{"ssid":"...","pass":"..."}` | `{}`; the credentials are stored (the password is never logged) and the device restarts to join the network |

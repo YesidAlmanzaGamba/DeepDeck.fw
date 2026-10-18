@@ -10,6 +10,11 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-021 | 2026-10-18 | Command Center: Lighting (effects, live preview, per-layer key painter), WiFi, Device (backup/restore), Log pages | web | 3f93b42 | `ng build`, every page loaded with real data over BLE in the built app | yes (app, automated) |
+| CH-020 | 2026-10-18 | Command Center app shell: Tauri, BLE/USB link manager, DeviceService, Connect and Dashboard | web, app | c06b36e, 0848184 | `cargo build`, app self-test over BLE (0 failures) | yes (automated) |
+| CH-019 | 2026-10-18 | Lighting v2: 11 effects, brightness, two colours, press highlight, per-layer key colours, live preview; protocol `led.*` | firmware, tools | 1824fd6 | build, flashed, selftest 0 failures over USB+BLE, heap flat over 30 `led.keys.set` | yes (automated); effects by eye: owner |
+| CH-018 | 2026-10-18 | OLED main screen: layer name and status icons in the yellow band, 4x4 grid; Device info pages and Restart in the menu | firmware | 66fc46f | build, flashed, boots without errors | owner to check the screen |
+| CH-017 | 2026-10-18 | Phase 3 plan (app, lighting v2, OLED) | docs | 13148fc | n/a | n/a |
 | CH-016 | 2026-10-18 | Swap layers/macros under a lock; fix an NVS handle leaked on every layer write | firmware | abd1a59 | stress test, heap flat over 30 rounds | yes (automated) |
 | CH-015 | 2026-10-18 | Macro, LED, device and WiFi methods; all `/api` handlers become wrappers | firmware | 796b2d2 | selftest over USB+BLE, HTTP, wifi.scan, restart | yes (automated) |
 | CH-014 | 2026-10-18 | Layer methods in the configuration core; `layer.changed` events | firmware | 73a3266 | USB/BLE/HTTP, write round trip | yes (automated) |
@@ -28,6 +33,42 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-017 to CH-021: Phase 3 (Command Center app, lighting v2, OLED redesign)
+- **Plan:** [2026-10-18-app-lighting-oled](../plans/2026-10-18-app-lighting-oled.md). Branch `command-center`.
+- **CH-018, screen and menu (R5.1):**
+  - main screen: the yellow band shows the active layer's name, `i/n` and the Bluetooth and WiFi
+    icons, instead of the fixed "Ahuyama" and the IP; the large layer name is gone; the 16 key names
+    use a 4x4 grid of 32x12 px cells over the whole blue area;
+  - redrawn on layer change, BLE connect/disconnect and WiFi IP changes only;
+  - settings menu: "Device info" (pages Bluetooth, WiFi, System; knob flips, press returns) and
+    "Restart" (replaces "DancingBerlin"). The values come from `device_status_get()`, the same as
+    `device.info`.
+- **CH-019, lighting v2 (R5.2):**
+  - `rgb_led.c` rewritten as a 50 fps frame renderer: no `clear()` between frames (the flicker),
+    `hsv2rgb` argument order fixed, brightness applied once;
+  - 11 effects (ids 0-5 keep their meaning, so stored settings need no migration), press highlight
+    usable with any effect, notification LEDs in the layer colour;
+  - per-layer key colours in NVS namespace `led_keys` (51-byte blob per layer), erased with the layer
+    and by `layers.restore`;
+  - protocol: `led.get/set` new fields plus `save:false` for preview, `led.effects`,
+    `led.keys.get/set/reset`; `device.info` gains `ble_connected` and `app_connected`.
+- **CH-020, app shell (R4.3):** see the commit message; BLE is Windows-only for now (D-024), USB works
+  on every OS.
+- **CH-021, app pages:** the Lighting page is the fix for "custom RGB does not work": the old per-key
+  "Color" tab of the key editor stored colours the firmware never kept.
+- **Verified:**
+  - firmware: flashed, 45 s boot without errors, `cc_cli.py --usb COM3 --ble selftest` 0 failures
+    including the new LED tests (11 effects, preview not stored, `led.keys` round trip, bad input
+    rejected), heap 37.7-38.3 KB flat over 30 rounds of key colour writes and effect previews;
+  - app: built (debug and release), self-test over BLE (`DD_CC_SELFTEST=1`), then every page driven
+    in the built app through the WebView2 DevTools port: dashboard, 11 effects, 3 layers with key
+    colours, WiFi scan, device name.
+- **Still to check by the owner:**
+  - the new main screen and the 3 Device info pages;
+  - each effect on the keys, and the press highlight;
+  - painting key colours in the app: they show at once (Per-key effect) and survive a restart after Save;
+  - backup to a file and restore from it.
 
 ### CH-012 to CH-016: Command Center Phase 1 (configuration core)
 - **Why:** every configuration action lived in HTTP handlers, so only the web page could use it. The

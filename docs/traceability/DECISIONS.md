@@ -4,6 +4,11 @@ Product and architecture decisions, newest first. A decision stays valid until a
 
 | ID | Date | Decision | Decided by |
 |----|------|----------|------------|
+| D-026 | 2026-10-18 | The Tauri CLI runs through `npx @tauri-apps/cli@2.12.3`, not as an npm dependency | Claude |
+| D-025 | 2026-10-18 | The web page's Settings page stays in the browser only; the app has Lighting, WiFi and Device pages | Claude |
+| D-024 | 2026-10-18 | App BLE is Windows-first (WinRT); macOS and Linux get USB now and BLE in R4.4 | Claude |
+| D-023 | 2026-10-18 | Per-layer key colours live in their own NVS namespace (`led_keys`), not in `dd_layer` | Claude |
+| D-022 | 2026-10-18 | Lighting v2: 11 effects, ids 0-5 unchanged; OLED: layer name and icons in yellow, 4x4 grid; Device info as 3 pages | owner |
 | D-021 | 2026-10-18 | A deleted macro is emptied, not removed; `macros.create` assigns the keycode | Claude |
 | D-020 | 2026-10-18 | On a crash the firmware prints and reboots instead of halting in the GDB stub | Claude |
 | D-019 | 2026-10-18 | Firmware version 0.6.0 for the configuration core | Claude |
@@ -27,6 +32,22 @@ Product and architecture decisions, newest first. A decision stays valid until a
 | D-001 | 2026-10-16 | One repository for firmware and web, with both histories kept | owner |
 
 ## Details
+
+**D-026:** adding `@tauri-apps/cli` to `package.json` rewrites `package-lock.json` and `yarn.lock`
+for the whole Angular 15 tree. Pinning the version on the `npx` line gives the same result without
+touching the lockfiles.
+
+**D-025:** the web page cannot scan WiFi or preview lighting, and it goes away in R4.5. The app's
+pages need protocol methods that HTTP does not have.
+
+**D-024:** btleplug cannot reach a keyboard Windows is already connected to (spike, D-015). macOS
+(CoreBluetooth) and Linux (BlueZ) must be written and tested on those machines.
+
+**D-023:** changing `dd_layer` changes the blob size and needs a migration of every stored layer.
+A separate blob per layer needs none, and a missing blob simply means "defaults".
+
+**D-022:** chosen by the owner when asked (2026-10-18). Keeping ids 0-5 means LED settings stored
+by older firmware still mean the same effect.
 
 **D-021:** a macro's key code is its position (500 + index): removing one would renumber every later
 macro, and the keys that point at it.

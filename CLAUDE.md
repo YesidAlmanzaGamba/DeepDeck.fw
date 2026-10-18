@@ -18,6 +18,7 @@ This repository is a fork that is being reworked as a whole. The upstream repos
 | `docs/plans/` | Plans: one file per piece of work, written **before** implementing it |
 | `docs/traceability/` | `CHANGELOG.md` (every change, with commits and how it was verified) and `DECISIONS.md` |
 | `tools/cc-cli/cc_cli.py` | Protocol client: `--usb COM3` / `--ble`, `call <method> [json]`, `watch`, `selftest` |
+| `web/src-tauri/` | The **Command Center** desktop app (Tauri v2, Rust): BLE/USB link (`link.rs`, `ble_win.rs`), native file dialogs. The UI is the Angular app in `web/` |
 
 ## Configuration core (Command Center, R4)
 
@@ -75,6 +76,27 @@ Then rebuild and flash the firmware: flashing writes `www_0` too.
 
 `npm install` rewrites `package-lock.json` and `yarn.lock`. Revert them unless dependencies changed on purpose.
 
+### Command Center app (Tauri)
+
+Rust and the VS Build Tools are under `D:\DevTools` (`RUSTUP_HOME=D:\DevTools\Rust\rustup`,
+`CARGO_HOME=D:\DevTools\Rust\cargo`, add `cargo\bin` to `PATH`). From `web/`:
+
+```sh
+npx --yes @tauri-apps/cli@2.12.3 dev      # ng serve + the app window
+npx --yes @tauri-apps/cli@2.12.3 build    # release exe + NSIS installer (runs build-prod first)
+```
+
+The CLI is run through `npx` on purpose (D-026). Checks:
+- `DD_CC_SELFTEST=1 [DD_CC_SELFTEST_KIND=usb] deepdeck-command-center.exe` connects to the first
+  DeepDeck and calls `device.info`, `layers.list`, `led.get`, `led.effects`, then exits.
+- The pages can be driven by script through the WebView2 DevTools port: start the exe with
+  `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9333 --remote-allow-origins=*"`.
+
+In the Angular code, talk to the DeepDeck only through `core/services/device/device.service.ts`
+(`call(method, params)`, `on(event)`). It uses the app's link inside Tauri and maps onto `/api` in
+a plain browser. The rxjs version is 6: no `firstValueFrom`, `throwError(() => ...)` or ES2019 array
+methods.
+
 ## Architecture notes that are easy to miss
 
 - `deepdeck_tasks.c` `#include`s `keypress_handles.c`, which `#include`s `keymap.c`. Both are also listed
@@ -88,8 +110,11 @@ Then rebuild and flash the firmware: flashing writes `www_0` too.
 - Layers are NVS blobs (`dd_layer`, namespace `layers`, keys `layer_N`), and the active layer is
   stored under `cur_layer`. **Changing `dd_layer` changes the blob size:** add a migration like
   `nvs_migrate_layer_v1()` so layers already on the device are not lost.
-- Change layers only through `set_current_layout()`. It refreshes the OLED and saves the layer
-  3 s after the last change.
+- Change layers only through `set_current_layout()`. It refreshes the OLED, tells the LED task
+  (`rgb_led_layer_changed()`) and saves the layer 3 s after the last change.
+- LEDs: `components/rgb_led` renders frames in its own task. Change the mode with `rgb_led_apply()`,
+  never by drawing pixels elsewhere. Per-layer key colours are in NVS namespace `led_keys`
+  (`k_<uuid>`); deleting or restoring layers must erase them (`rgb_layer_colors_erase*`).
 - The REST API (`firmware/main/server.c`) and `web/src/app/core/services/api/api.service.ts` are one
   contract: change both in the **same commit**.
 - The BLE HID report descriptor still declares mouse and joystick reports. That is on purpose:
