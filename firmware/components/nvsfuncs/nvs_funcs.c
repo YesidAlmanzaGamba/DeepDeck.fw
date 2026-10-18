@@ -614,6 +614,7 @@ void nvs_load_macros(void)
 		break;
 	}
 
+	free(user_macros); // reloaded after every update: the old array used to leak
 	user_macros = malloc((macro_num + 1) * sizeof(dd_macros));
 	for (int i = 0; i < macro_num; i++)
 	{
@@ -753,16 +754,11 @@ esp_err_t nvs_update_macro(dd_macros macro)
 
 esp_err_t nvs_delete_macro(dd_macros macro)
 {
-	nvs_handle_t nvs_handle;
-	char macro_key[10];
-	ESP_ERROR_CHECK(nvs_open(LAYER_NAMESPACE, NVS_READWRITE, &nvs_handle));
-	sprintf(macro_key, "macro_%hu", (macro.keycode - MACRO_BASE_VAL));
-	ESP_ERROR_CHECK(nvs_set_blob(nvs_handle, macro_key, (void *)&macro, sizeof(dd_macros)));
-	ESP_ERROR_CHECK(nvs_commit(nvs_handle));
-	nvs_close(nvs_handle);
-	nvs_load_macros();
-
-	return ESP_OK;
+	// Macros are addressed by position (key code MACRO_BASE_VAL + N), so deleting empties the slot.
+	// This used to write the macro unchanged into the layers namespace.
+	dd_macros empty = {0};
+	empty.keycode = macro.keycode;
+	return nvs_update_macro(empty);
 }
 
 esp_err_t nvs_restore_default_macros(void)

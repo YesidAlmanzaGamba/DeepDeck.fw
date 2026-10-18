@@ -234,6 +234,32 @@ async def selftest(clients):
             report.check(seen, "layers.set_active sends layer.changed")
         except Exception as err:
             report.fail(f"layers.set_active / layer.changed: {err}")
+        finally:
+            active = ((snap.get("device.info") or {}).get("layer") or {}).get("uuid")
+            if active:
+                await main.request("layers.set_active", {"uuid": active})
+
+    macros = (snap.get("macros.list") or {}).get("macros", [])
+    if macros:
+        original = macros[-1]
+        try:
+            await main.request("macros.update", dict(original, name="cctest", key=[224, 4]))
+            got = (await main.request("macros.list"))["macros"][-1]
+            report.check(got["name"] == "cctest" and got["key"][:2] == [224, 4], "macros.update changes the macro")
+            await main.request("macros.delete", {"keycode": original["keycode"]})
+            got = (await main.request("macros.list"))["macros"][-1]
+            report.check(got["name"] == "" and not any(got["key"]), "macros.delete empties the macro")
+        except Exception as err:
+            report.fail(f"macros update/delete: {err}")
+        finally:
+            await main.request("macros.update", original)
+            got = (await main.request("macros.list"))["macros"][-1]
+            report.check(got == original, "macro restored")
+        try:
+            await main.request("macros.update", dict(original, key=[999]))
+            report.fail("macro key code 999 accepted")
+        except DeviceError as err:
+            report.check(err.code == "bad_request", "macro key code 999 rejected")
 
     led = snap.get("led.get")
     if led:

@@ -66,22 +66,6 @@ void json_free(void *ptr)
 	heap_caps_free(ptr);
 }
 
-void json_response(char *j_response)
-{
-	cJSON *response_json = cJSON_CreateObject();
-	cJSON *item_reason = cJSON_CreateString("reason");
-	cJSON_AddItemToObject(response_json, " TO DO ", item_reason);
-	cJSON *item_message = cJSON_CreateString("message");
-	cJSON_AddItemToObject(response_json, "TO DO", item_message);
-
-	j_response = cJSON_Print(response_json);
-	if (j_response == NULL)
-	{
-		abort();
-	}
-
-	cJSON_Delete(response_json);
-}
 
 
 /* The /api handlers are thin wrappers around the configuration core (config_api.c): they turn the
@@ -191,110 +175,27 @@ static esp_err_t http_call_with_body(httpd_req_t *req, const char *method)
  */
 esp_err_t connect_url_handler(httpd_req_t *req)
 {
-	ESP_LOGI(TAG, "connect handler");
-	char *buffer;
-	char *string = NULL;
-	json_response(string);
-	size_t buf_len;
-	buf_len = (req->content_len) + 1;
-	buffer = malloc(buf_len);
-	httpd_req_recv(req, buffer, req->content_len);
-
-	ESP_ERROR_CHECK(httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*"));
-	httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type");
-	cJSON *payload = cJSON_Parse(buffer);
-
-	if (NULL == payload)
-	{
-		const char *err = cJSON_GetErrorPtr();
-		if (err != NULL)
-		{
-			ESP_LOGE(TAG, "Error parsing json before %s", err);
-			cJSON_Delete(payload);
-
-			httpd_resp_set_status(req, "500");
-			return -1;
-		}
-	}
-
-	cJSON *ssid = cJSON_GetObjectItem(payload, "ssid");
-	cJSON *pass = cJSON_GetObjectItem(payload, "pass");
-
-	httpd_resp_set_type(req, "application/json");
-	httpd_resp_sendstr(req, string);
-
-	if (cJSON_IsString(ssid) && (ssid->valuestring != NULL))
-	{
-		printf("WIFI SSID \"%s\"\n", ssid->valuestring);
-
-		if (cJSON_IsString(pass) && (pass->valuestring != NULL))
-		{
-			printf("WIFI PASS \"%s\"\n", pass->valuestring);
-
-			nvs_flash_init();
-			nvs_handle_t nvs;
-			nvs_open("wifiCreds", NVS_READWRITE, &nvs);
-			nvs_set_str(nvs, "ssid", ssid->valuestring);
-			nvs_set_str(nvs, "pass", pass->valuestring);
-			nvs_close(nvs);
-			ESP_LOGI("nvs", "Wifi Credentials Saved");
-			httpd_resp_set_status(req, HTTPD_200);
-			httpd_resp_send(req, NULL, 0);
-		}
-	}
-
-	else
-	{
-		httpd_resp_set_status(req, HTTPD_400);
-		httpd_resp_send(req, NULL, 0);
-		free(buffer);
-		return ESP_OK;
-	}
-
-	free(buffer);
-	free(string);
-
-	wifi_reset = true;
-	xSemaphoreGive(Wifi_initSemaphore);
-	return ESP_OK;
+	// stores the credentials, then the device restarts to join the network (deferred until the reply is sent)
+	return http_call_with_body(req, "wifi.set");
 }
 
 esp_err_t config_url_handler(httpd_req_t *req)
 {
-	ESP_LOGI(TAG, "HTTP GET  --> /api/config");
-
-	ESP_ERROR_CHECK(httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*")); //
-	// httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "*");
-	httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type");
-
-	uint8_t layers_num = nvs_read_num_layers();
-	char *string = NULL;
-	cJSON *monitor = cJSON_CreateObject();
-	if (monitor == NULL)
-	{
-		httpd_resp_set_status(req, HTTPD_400);
-		httpd_resp_send(req, NULL, 0);
-		return ESP_OK;
-	}
-
-	cJSON_AddItemToObject(monitor, "ssid", cJSON_CreateString("ssid"));
-	cJSON_AddItemToObject(monitor, "FWVersion", cJSON_CreateString(FIRMWARE_VERSION));
-	cJSON_AddItemToObject(monitor, "Mac", cJSON_CreateString("MAC"));
-
-	string = cJSON_Print(monitor);
-	if (string == NULL)
-	{
-		fprintf(stderr, "Failed to print monitor.\n");
-	}
-
+	// device.info, plus the field names the web page reads (FWVersion, Mac, ssid)
+	http_cors(req);
+	config_error_t err;
+	cJSON *info = config_api_call("device.info", NULL, &err);
+	if (info == NULL)
+		return http_call(req, "device.info", NULL);
+	cJSON_AddStringToObject(info, "FWVersion", FIRMWARE_VERSION);
+	cJSON_AddStringToObject(info, "Mac", cJSON_GetObjectItem(info, "mac")->valuestring);
+	cJSON *ssid = cJSON_GetObjectItem(cJSON_GetObjectItem(info, "wifi"), "ssid");
+	cJSON_AddStringToObject(info, "ssid", cJSON_IsString(ssid) ? ssid->valuestring : "");
+	char *text = cJSON_PrintUnformatted(info);
 	httpd_resp_set_type(req, "application/json");
-	httpd_resp_sendstr(req, string);
-	httpd_resp_set_status(req, HTTPD_200);
-	httpd_resp_send(req, NULL, 0);
-
-	cJSON_Delete(monitor);
-	free(string);
-
+	httpd_resp_sendstr(req, text != NULL ? text : "{}");
+	free(text);
+	cJSON_Delete(info);
 	return ESP_OK;
 }
 
@@ -315,94 +216,7 @@ esp_err_t config_url_handler(httpd_req_t *req)
  */
 esp_err_t get_macros_url_handler(httpd_req_t *req)
 {
-	ESP_LOGW("", "Free memory: %d bytes", esp_get_free_heap_size());
-
-	ESP_LOGI(TAG, "HTTP GET MACROS INFO --> /api/macros");
-	ESP_ERROR_CHECK(httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*"));
-	ESP_ERROR_CHECK(httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type"));
-
-	int index = 0;
-	cJSON *macro_data = NULL;
-	cJSON *macro_name = NULL;
-	cJSON *macro_keycode = NULL;
-	cJSON *macro_key = NULL;
-
-	cJSON *macro_object = cJSON_CreateObject();
-	if (macro_object == NULL)
-	{
-		// abort();
-
-		const char *err = cJSON_GetErrorPtr();
-		if (err != NULL)
-		{
-			ESP_LOGE(TAG, "Error parsing json before %s", err);
-			cJSON_Delete(macro_object);
-			httpd_resp_set_status(req, "500");
-			httpd_resp_send(req, NULL, 0);
-			return -1;
-		}
-	}
-
-	cJSON *array = cJSON_CreateArray();
-	if (array == NULL)
-	{
-		// abort();
-
-		const char *err_ = cJSON_GetErrorPtr();
-		if (err_ != NULL)
-		{
-			ESP_LOGE(TAG, "Error parsing json before %s", err_);
-			cJSON_Delete(macro_object);
-			httpd_resp_set_status(req, "500");
-			httpd_resp_send(req, NULL, 0);
-			return -1;
-		}
-	}
-
-	cJSON_AddItemToObject(macro_object, "macros", array);
-
-	for (index = 0; index < total_macros; ++index)
-	{
-		macro_data = cJSON_CreateObject();
-		if (macro_data == NULL)
-			abort();
-		cJSON_AddItemToArray(array, macro_data);
-
-		macro_name = cJSON_CreateString((user_macros[index].name));
-		if (macro_name == NULL)
-			abort();
-		cJSON_AddItemToObject(macro_data, "name", macro_name);
-
-		macro_keycode = cJSON_CreateNumber(user_macros[index].keycode);
-		if (macro_keycode == NULL)
-			abort();
-		cJSON_AddItemToObject(macro_data, "keycode", macro_keycode);
-
-		macro_key = cJSON_CreateArray();
-		if (macro_key == NULL)
-			abort();
-		cJSON_AddItemToObject(macro_data, "key", macro_key);
-		for (int i = 0; i < MACRO_LEN; i++)
-		{
-			cJSON_AddItemToArray(macro_key, cJSON_CreateNumber(user_macros[index].key[i]));
-		}
-	}
-
-	char *string = NULL;
-	// string = malloc(strlen(cJSON_Print(macro_object)) + 1);
-	string = cJSON_Print(macro_object);
-	if (string == NULL)
-		abort();
-
-	httpd_resp_set_type(req, "application/json");
-	httpd_resp_sendstr(req, string);
-	httpd_resp_set_status(req, HTTPD_200);
-	httpd_resp_send(req, NULL, 0);
-
-	free(string);
-	cJSON_Delete(macro_object);
-
-	return ESP_OK;
+	return http_call(req, "macros.list", NULL);
 }
 
 /**
@@ -413,85 +227,7 @@ esp_err_t get_macros_url_handler(httpd_req_t *req)
  */
 esp_err_t create_macro_url_handler(httpd_req_t *req)
 {
-	ESP_LOGI(TAG, "HTTP POST CREATE MACRO --> /api/macros");
-	ESP_ERROR_CHECK(httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*"));
-	ESP_ERROR_CHECK(httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type"));
-
-	char *buf;
-	size_t buf_len;
-	char *string = NULL;
-	json_response(string);
-
-	buf_len = (req->content_len) + 1;
-	buf = malloc(buf_len);
-	httpd_req_recv(req, buf, req->content_len);
-
-	dd_macros new_macro;
-	cJSON *payload = cJSON_Parse(buf);
-
-	if (NULL == payload)
-	{
-		const char *err = cJSON_GetErrorPtr();
-		if (err != NULL)
-		{
-			ESP_LOGE(TAG, "Error parsing json before %s", err);
-			cJSON_Delete(payload);
-			free(buf);
-			free(buf);
-			httpd_resp_set_status(req, "500");
-			return -1;
-		}
-	}
-
-	cJSON *name = cJSON_GetObjectItem(payload, "name");
-	if (cJSON_IsString(name) && (name->valuestring != NULL))
-	{
-		if (strlen(name->valuestring) < 6)
-			strcpy(new_macro.name, name->valuestring);
-		else
-			strcpy(new_macro.name, "  ");
-	}
-	cJSON *keycode = cJSON_GetObjectItem(payload, "keycode");
-	if (cJSON_IsNumber(keycode))
-	{
-		new_macro.keycode = keycode->valueint;
-	}
-	cJSON *key = cJSON_GetObjectItem(payload, "key");
-	if (cJSON_IsArray(key))
-	{
-		for (int i = 0; i < MACRO_LEN; i++)
-		{
-			cJSON *item = cJSON_GetArrayItem(key, i);
-			if (cJSON_IsNumber(item))
-			{
-				if (item->valueint >= 0 || item->valueint <= 1000)
-					new_macro.key[i] = item->valueint;
-				else
-					new_macro.key[i] = 0;
-			}
-		}
-	}
-
-	ESP_LOGI(TAG, "new_macro.name: %s, new_macro.keycode: %d, new_macro.key:{%d,%d,%d,%d,%d} ", new_macro.name, new_macro.keycode, new_macro.key[0], new_macro.key[1], new_macro.key[2], new_macro.key[3], new_macro.key[4]);
-
-	esp_err_t error;
-	error = nvs_create_new_macro(new_macro);
-	if (error != ESP_OK)
-	{
-		ESP_LOGE(TAG, "nvs_create_new_macro error %s", esp_err_to_name(error));
-		httpd_resp_set_status(req, HTTPD_400);
-	}
-	else
-	{
-
-		httpd_resp_set_status(req, HTTPD_200);
-	}
-	cJSON_Delete(payload);
-	free(buf);
-	httpd_resp_set_type(req, "application/json");
-	httpd_resp_sendstr(req, string);
-	httpd_resp_send(req, NULL, 0);
-	return ESP_OK;
+	return http_call_with_body(req, "macros.create");
 }
 
 /**
@@ -502,20 +238,12 @@ esp_err_t create_macro_url_handler(httpd_req_t *req)
  */
 esp_err_t delete_macro_url_handler(httpd_req_t *req)
 {
-	ESP_LOGI(TAG, "HTTP DELETE MACRO --> /api/macros");
-	ESP_ERROR_CHECK(httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*"));
-	ESP_ERROR_CHECK(httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type"));
-	char *string = NULL;
-	json_response(string);
-
-	httpd_resp_set_type(req, "application/json");
-	httpd_resp_sendstr(req, string);
-	httpd_resp_set_status(req, HTTPD_200);
-	httpd_resp_send(req, NULL, 0);
-
-	free(string);
-
-	return ESP_OK;
+	// DELETE /api/macros?keycode=512. It used to answer 200 without deleting anything.
+	cJSON *params = http_query_params(req, "keycode");
+	cJSON *keycode = cJSON_GetObjectItem(params, "keycode");
+	if (cJSON_IsString(keycode))
+		cJSON_ReplaceItemInObject(params, "keycode", cJSON_CreateNumber(atoi(keycode->valuestring)));
+	return http_call(req, "macros.delete", params);
 }
 
 /**
@@ -526,84 +254,7 @@ esp_err_t delete_macro_url_handler(httpd_req_t *req)
  */
 esp_err_t update_macro_url_handler(httpd_req_t *req)
 {
-	ESP_LOGI(TAG, "HTTP UPDATE MACRO --> /api/macros");
-	ESP_ERROR_CHECK(httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*"));
-	ESP_ERROR_CHECK(httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type"));
-
-	char *buf;
-	size_t buf_len;
-	char *string = NULL;
-	json_response(string);
-
-	buf_len = (req->content_len) + 1;
-	buf = malloc(buf_len);
-	httpd_req_recv(req, buf, req->content_len);
-
-	dd_macros new_macro;
-	cJSON *payload = cJSON_Parse(buf);
-
-	if (NULL == payload)
-	{
-		const char *err = cJSON_GetErrorPtr();
-		if (err != NULL)
-		{
-			ESP_LOGE(TAG, "Error parsing json before %s", err);
-			cJSON_Delete(payload);
-			free(buf);
-			httpd_resp_set_status(req, "500");
-			return -1;
-		}
-	}
-
-	cJSON *name = cJSON_GetObjectItem(payload, "name");
-	if (cJSON_IsString(name) && (name->valuestring != NULL))
-	{
-		if (strlen(name->valuestring) < 7)
-			strcpy(new_macro.name, name->valuestring);
-		else
-			strcpy(new_macro.name, "**");
-	}
-	cJSON *keycode = cJSON_GetObjectItem(payload, "keycode");
-	if (cJSON_IsNumber(keycode))
-	{
-		new_macro.keycode = keycode->valueint;
-	}
-	cJSON *key = cJSON_GetObjectItem(payload, "key");
-	if (cJSON_IsArray(key))
-	{
-		for (int i = 0; i < MACRO_LEN; i++)
-		{
-			cJSON *item = cJSON_GetArrayItem(key, i);
-			if (cJSON_IsNumber(item))
-			{
-				if (item->valueint >= 0 || item->valueint <= 1000)
-					new_macro.key[i] = item->valueint;
-				else
-					new_macro.key[i] = 0;
-			}
-		}
-	}
-
-	ESP_LOGI(TAG, "new_macro.name: %s, new_macro.keycode: %d, new_macro.key:{%d,%d,%d,%d,%d} ", new_macro.name, new_macro.keycode, new_macro.key[0], new_macro.key[1], new_macro.key[2], new_macro.key[3], new_macro.key[4]);
-	esp_err_t error;
-	error = nvs_update_macro(new_macro);
-	if (error != ESP_OK)
-	{
-		ESP_LOGE(TAG, "nvs_update_macro error %s", esp_err_to_name(error));
-		httpd_resp_set_status(req, HTTPD_400);
-	}
-	else
-	{
-
-		httpd_resp_set_status(req, HTTPD_200);
-	}
-	httpd_resp_set_type(req, "application/json");
-	httpd_resp_sendstr(req, string);
-	httpd_resp_send(req, NULL, 0);
-	cJSON_Delete(payload);
-	free(buf);
-
-	return ESP_OK;
+	return http_call_with_body(req, "macros.update");
 }
 
 /**
@@ -614,26 +265,7 @@ esp_err_t update_macro_url_handler(httpd_req_t *req)
  */
 esp_err_t restore_default_macro_url_handler(httpd_req_t *req)
 {
-	ESP_LOGI(TAG, "HTTP RESTORE DEFAULT MACROS --> /api/macros/restore");
-	ESP_ERROR_CHECK(httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*")); //
-	httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type");
-
-	char *string = NULL;
-	json_response(string);
-	httpd_resp_set_type(req, "application/json");
-	httpd_resp_sendstr(req, string);
-	esp_err_t error = nvs_restore_default_macros();
-	if (error == ESP_OK)
-	{
-		httpd_resp_set_status(req, HTTPD_200);
-	}
-	else
-	{
-		httpd_resp_set_status(req, HTTPD_400);
-	}
-	httpd_resp_send(req, NULL, 0);
-
-	return ESP_OK;
+	return http_call(req, "macros.restore", NULL);
 }
 
 /**
@@ -744,97 +376,9 @@ esp_err_t restore_default_layer_url_handler(httpd_req_t *req)
  */
 esp_err_t change_keyboard_led_handler(httpd_req_t *req)
 {
-	ESP_LOGI(TAG, "HTTP POST  CHANGE LED MODE --> /api/led");
-
-	httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-	httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type");
-	rgb_mode_t led_mode = {0};
-
-	// Read the URI line and get the host
-	char *buf;
-	size_t buf_len;
-	char *string = NULL;
-
-	buf_len = (req->content_len) + 1;
-	buf = malloc(buf_len);
-	httpd_req_recv(req, buf, req->content_len);
-
-	cJSON *payload = cJSON_Parse(buf);
-#ifdef DEBUG
-	string = cJSON_Print(payload);
-	if (string == NULL)
-		fprintf(stderr, "Failed to print monitor.\n");
-
-	ESP_LOGE("+", "%s", string);
-#endif
-
-	cJSON *mode = cJSON_GetObjectItem(payload, "mode");
-	if (cJSON_IsNumber(mode))
-	{
-		led_mode.mode = mode->valueint;
-	}
-
-	cJSON *hue = cJSON_GetObjectItem(payload, "H");
-	if (cJSON_IsNumber(hue))
-	{
-		led_mode.H = hue->valueint;
-	}
-	cJSON *saturation = cJSON_GetObjectItem(payload, "S");
-	if (cJSON_IsNumber(hue))
-	{
-		led_mode.S = saturation->valueint;
-	}
-	cJSON *value = cJSON_GetObjectItem(payload, "V");
-	if (cJSON_IsNumber(value))
-	{
-		led_mode.V = value->valueint;
-	}
-
-	cJSON *speed = cJSON_GetObjectItem(payload, "speed");
-	if (cJSON_IsNumber(speed))
-	{
-		led_mode.speed = speed->valueint;
-	}
-
-	if ((led_mode.mode == 4) || (led_mode.mode == 5))
-	{
-		cJSON *rgb_color = cJSON_GetObjectItem(payload, "rgb");
-		if (cJSON_IsArray(rgb_color))
-		{
-			for (int i = 0; i < 3; i++)
-			{
-				cJSON *item = cJSON_GetArrayItem(rgb_color, i);
-				if (cJSON_IsNumber(item))
-				{
-					led_mode.rgb[i] = item->valueint;
-					// ESP_LOGE("+", "led_mode[%d] = %d", (i + 2), led_mode.rgb[i]);
-				}
-				else
-				{
-					httpd_resp_set_status(req, HTTPD_400);
-					httpd_resp_send(req, NULL, 0);
-				}
-			}
-		}
-	}
-	else
-	{
-		nvs_load_rgb_color(&led_mode);
-	}
-
-	json_response(string);
-	free(buf);
-	cJSON_Delete(payload);
-	nvs_save_led_mode(led_mode);
-
-	xQueueSend(keyled_q, &led_mode, 0);
-
-	httpd_resp_set_type(req, "application/json");
-	httpd_resp_sendstr(req, string);
-	httpd_resp_set_status(req, HTTPD_200);
-	httpd_resp_send(req, NULL, 0);
-
-	return ESP_OK;
+	if (req->method == HTTP_OPTIONS)
+		return options_handler(req); // the route is also registered for the CORS preflight
+	return http_call_with_body(req, "led.set");
 }
 
 /* This handler allows the custom error handling functionality to be
