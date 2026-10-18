@@ -1,0 +1,61 @@
+<div class="dd-page">
+  <h2>Layers by application</h2>
+  <div class="dd-error" *ngIf="error">{{ error }}</div>
+  <div class="dd-ok" *ngIf="message">{{ message }}</div>
+
+  <div class="dd-card">
+    <div class="dd-row">
+      <mat-slide-toggle [(ngModel)]="enabled" (ngModelChange)="changed()">
+        Switch the DeepDeck's layer when another program comes to the front
+      </mat-slide-toggle>
+      <span class="grow"></span>
+      <span class="muted" *ngIf="dirty">Not saved</span>
+      <button class="btn-p" (click)="save()" [disabled]="!dirty">Save</button>
+    </div>
+    <p class="muted">
+      Works while this window is closed to the tray. Switching layers on the DeepDeck by hand still works;
+      the rule applies again the next time you switch programs.
+      <span *ngIf="lastSwitch"><br>Last switch: <strong>{{ lastSwitch }}</strong></span>
+    </p>
+  </div>
+
+  <div class="dd-card">
+    <h3>Rules</h3>
+    <table class="rules" *ngIf="rules.length">
+      <tr *ngFor="let r of rules">
+        <td class="exe">{{ r.exe }}</td>
+        <td>→</td>
+        <td>
+          <select [(ngModel)]="r.uuid" (ngModelChange)="changed()">
+            <option *ngFor="let l of layers" [value]="l.uuid">{{ l.name }}</option>
+            <option *ngIf="!layerName(r.uuid) || layerName(r.uuid) === '(deleted layer)'" [value]="r.uuid">(deleted layer)</option>
+          </select>
+        </td>
+        <td><button class="btn-s small danger" (click)="remove(r)">Remove</button></td>
+      </tr>
+    </table>
+    <p class="muted" *ngIf="!rules.length">No rules yet: add a program below.</p>
+
+    <div class="dd-row" style="margin-top: 12px">
+      <input class="dd-input" [(ngModel)]="newExe" placeholder="program, e.g. chrome.exe" (keyup.enter)="add(newExe)">
+      <button class="btn-s" (click)="add(newExe)" [disabled]="!newExe.trim()">Add</button>
+    </div>
+    <div *ngIf="suggestions().length">
+      <span class="muted">Recently in front (click to add):</span>
+      <div class="chips">
+        <button class="chip" *ngFor="let exe of suggestions()" (click)="add(exe)">{{ exe }}</button>
+      </div>
+    </div>
+
+    <div class="dd-row" style="margin-top: 14px">
+      <span>Other programs:</span>
+      <select [(ngModel)]="fallback" (ngModelChange)="changed()">
+        <option value="">keep the current layer</option>
+        <option *ngFor="let l of layers" [value]="l.uuid">switch to {{ l.name }}</option>
+      </select>
+    </div>
+  </div>
+
+  <p class="muted" *ngIf="current">Now in front: {{ current }}</p>
+  <p class="muted" *ngIf="!device.isApp">Needs the DeepDeck Command Center app.</p>
+</div>

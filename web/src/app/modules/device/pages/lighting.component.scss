@@ -58,3 +58,13 @@
   .bar { height: 10px; background: #1c1c1f; border-radius: 5px; overflow: hidden; margin-bottom: 6px; }
   .fill { height: 100%; background: #dc9f10; transition: width 0.3s; }
 }
+
+.rules { border-collapse: collapse; margin-top: 8px;
+  td { padding: 4px 10px 4px 0; }
+  .exe { font-family: Consolas, monospace; color: #eee; }
+}
+select { background: #1f1f22; color: #ddd; border: 1px solid #4a4a50; border-radius: 4px; padding: 4px 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { background: #2e2e33; border: 1px solid #45454b; border-radius: 12px; padding: 3px 10px; color: #ddd;
+  cursor: pointer; font-family: Consolas, monospace; font-size: 12px; &:hover { border-color: #dc9f10; } }
+.small { padding: 2px 8px; font-size: 12px; }

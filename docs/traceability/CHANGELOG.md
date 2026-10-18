@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-026 | 2026-10-18 | Layers by application: the app switches the DeepDeck's layer when another program comes to the front | app | (branch `phase4`) | fallback and a matching rule switched the layer on the device | yes (automated) |
 | CH-025 | 2026-10-18 | New keymap editor (4x4 keys + 2 knobs, key search, drag and drop); knob macros use the user's macros (R1.3); macro index bounds-checked | web, firmware | (branch `phase4`) | edit by click and by drag, knob action, save over BLE, read back over USB, layer restored identical | yes (automated) |
 | CH-024 | 2026-10-18 | Firmware update from the app: `fw.*`, rollback, Update page, `cc_cli update`; BLE writes capped at 512 bytes and serialised; UART ISR in IRAM; BLE Data Length Extension | firmware, app, tools | (branch `phase4`) | updates over USB and BLE, corrupt / foreign images refused, crashing image rolled back, update from the app's page | yes (automated) |
 | CH-023 | 2026-10-18 | Remove the WiFi portal: web server, SPIFFS image, setup network; WiFi station joins without restart, `wifi.forget`; shared BLE access in the app; I2C mutex created before BLE; fw 0.7.0 | firmware, web, app | (see branch `phase4`) | build, flashed, selftest 0 failures over USB+BLE, heap 64 KB (was 38), app + cc_cli on BLE together | yes (automated); `wifi.set`/`forget`: owner |
@@ -37,6 +38,22 @@ Add new entries on top, with the next `CH-` number.
 | CH-001 | 2026-10-16 | Restore the I2C bus mutex deleted upstream | firmware | 2e7abe0 | build | no |
 
 ## Details
+
+### CH-026: Layers by application (R6.3)
+- **What:**
+  - `src-tauri/src/app_layers.rs`: a thread checks the foreground window's program every 400 ms
+    (Win32 `GetForegroundWindow`, `QueryFullProcessImageNameW`). When it changes and a rule matches
+    (or the "other programs" layer is set), it sends `layers.set_active` itself, once per change,
+    so it works with the window hidden. The Command Center itself never switches layers.
+  - Rules in `<app config dir>/app-layers.json` (`app_layers_get` / `app_layers_set`).
+  - Apps page: on/off, rules (program → layer), recently seen programs to add with one click, a
+    layer for other programs, the last switch.
+  - Windows only for now; elsewhere the watcher sees nothing (R4.4).
+- **Verified:** with the DeepDeck on Chrome, "other programs → Media" switched it to Media, and
+  "windowsterminal.exe → Numpad" switched it to Numpad (read back over USB); rules cleared and
+  the layer restored afterwards.
+- **Note:** Windows only gives the foreground to programs the user brings forward; a program
+  started in the background (a script) does not count until clicked.
 
 ### CH-025: New keymap editor (R6.2) and knob macros (R1.3)
 - **Why:** the old Keymap screens (a table, then a form per layer with tabs) came from the web

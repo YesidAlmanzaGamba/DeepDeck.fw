@@ -5,6 +5,7 @@
 
 #[cfg(windows)]
 mod ble_win;
+mod app_layers;
 mod firmware;
 mod link;
 mod selftest;
@@ -86,11 +87,24 @@ async fn open_firmware_file() -> Result<Option<firmware::FirmwareFile>, String> 
     .map_err(|err| err.to_string())?
 }
 
+#[tauri::command]
+fn app_layers_get(rules: State<'_, app_layers::SharedAppLayers>) -> app_layers::State {
+    rules.get()
+}
+
+#[tauri::command]
+fn app_layers_set(app: AppHandle, rules: State<'_, app_layers::SharedAppLayers>, value: app_layers::Rules) -> Result<(), String> {
+    rules.set(&app, value)
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
             let links: SharedLinks = Arc::new(Links::default());
             links.start_reconnect_loop(app.handle().clone());
+            let app_rules = app_layers::AppLayers::load(app.handle());
+            app_rules.start(app.handle().clone(), links.clone());
+            app.manage(app_rules);
             app.manage(links);
             if std::env::var("DD_CC_SELFTEST").is_ok() {
                 selftest::run(app.handle().clone());
@@ -105,7 +119,9 @@ fn main() {
             send,
             save_text_file,
             open_text_file,
-            open_firmware_file
+            open_firmware_file,
+            app_layers_get,
+            app_layers_set
         ])
         .run(tauri::generate_context!())
         .expect("error while running the DeepDeck Command Center");

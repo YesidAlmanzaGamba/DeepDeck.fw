@@ -38,6 +38,13 @@ const MENUITEMS: Menu[] = [
         icon: 'add_to_photos',
     },      
     {
+        state: 'apps',
+        name: 'APPS',
+        type: 'link',
+        icon: 'apps',
+        appOnly: true,
+    },
+    {
         state: 'lighting',
         name: 'LIGHTING',
         type: 'link',
