@@ -15,9 +15,9 @@ R1.2–R1.4 wait until this is done; R1.4 (API safety) is largely covered, becau
 
 | ID | Item | Status |
 |----|------|--------|
-| R4.0 | Spike: reach the DeepDeck over BLE (while connected as a keyboard) and USB from Tauri | in progress |
-| R4.1 | Firmware config core (`config_api`, `config_task`, WiFi/BLE coexistence) | proposed |
-| R4.2 | Firmware transports: BLE GATT config service, UART0 framing | proposed |
+| R4.0 | Spike: reach the DeepDeck over BLE (while connected as a keyboard) and USB from Tauri | done: [results](2026-10-17-command-center-spike-results.md) |
+| R4.1 | Firmware config core (`config_api`, `config_task`, WiFi/BLE coexistence) | in progress: [plan](2026-10-18-command-center-phase1.md) |
+| R4.2 | Firmware transports: BLE GATT config service, UART0 framing | in progress (merged into Phase 1) |
 | R4.3 | Command Center app: Tauri, transport layer, Connect and WiFi pages | proposed |
 | R4.4 | Installers for Windows, macOS and Linux (CI) | proposed |
 | R4.5 | Remove web server, SPIFFS, AP mode; repartition | proposed |

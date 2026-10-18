@@ -1,6 +1,6 @@
 # DeepDeck Command Center: desktop app over BLE and USB instead of the WiFi web portal
 
-- **Status:** approved (Phase 0 in progress)
+- **Status:** approved. Phase 0 done ([results](2026-10-17-command-center-spike-results.md)); next is Phase 1
 - **Roadmap item:** R4
 - **Areas:** both
 
@@ -82,7 +82,7 @@ regenerated. This is required for "send WiFi credentials over BLE, then connect 
 
 - `web/src-tauri/`, the standard Tauri layout. `frontendDist` = `../dist/esp-frontend`.
 - **Rust side:**
-  - `btleplug` for BLE: scan or reach the bonded device, connect, subscribe to TX, write to RX.
+  - BLE: own WinRT module on Windows (btleplug cannot reach a connected keyboard, D-015), btleplug on Linux, macOS to be decided; connect, subscribe to TX, write to RX.
   - the `serialport` crate for USB: list ports and open them with DTR/RTS off.
   - Commands `transport_list`, `transport_connect`, `transport_send`, and an event per received line.
 - **Angular side:**

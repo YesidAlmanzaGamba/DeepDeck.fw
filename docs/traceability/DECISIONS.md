@@ -4,6 +4,8 @@ Product and architecture decisions, newest first. A decision stays valid until a
 
 | ID | Date | Decision | Decided by |
 |----|------|----------|------------|
+| D-016 | 2026-10-17 | Install Rust and the VS Build Tools under `D:\DevTools` | owner |
+| D-015 | 2026-10-17 | BLE on Windows through our own WinRT module, not btleplug | Claude |
 | D-014 | 2026-10-17 | One JSON-per-line protocol mirroring the REST API, shared by BLE, USB and (temporarily) HTTP | Claude |
 | D-013 | 2026-10-17 | Keep the web server until the app covers everything, then remove it with SPIFFS and AP mode | owner |
 | D-012 | 2026-10-17 | The app talks over BLE and USB serial, both from the start | owner |
@@ -20,6 +22,10 @@ Product and architecture decisions, newest first. A decision stays valid until a
 | D-001 | 2026-10-16 | One repository for firmware and web, with both histories kept | owner |
 
 ## Details
+
+**D-015:** btleplug on Windows only knows devices it saw advertising, and discovers services uncached, which Windows refuses on a connected HID device. See the [spike results](../plans/2026-10-17-command-center-spike-results.md).
+
+**D-016:** Visual Studio 2022 Build Tools (C++) are in `D:\DevTools\VSBuildTools` (the Windows SDK still goes to C:). Rust is in `D:\DevTools\Rust`, with `RUSTUP_HOME` and `CARGO_HOME` set for the user.
 
 **D-010 to D-014:** see [2026-10-17-command-center](../plans/2026-10-17-command-center.md).
 - **Why (owner):** setting WiFi through the device's own AP means switching the PC's network back and

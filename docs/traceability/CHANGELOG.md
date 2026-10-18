@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-011 | 2026-10-17 | Spike R4.0: BLE and USB config channel, firmware plus Tauri (branch `spike/command-center`) | both | 087ee6b, 650fc87, (spike app) | echo over BLE and USB from Python and Tauri | **yes** |
 | CH-010 | 2026-10-17 | Add CLAUDE.md, docs/plans, docs/traceability | docs | 91bfc61 | n/a | n/a |
 | CH-009 | 2026-10-17 | Ship the current web app in the firmware SPIFFS image | both | 60af76f | build, image contents | no |
 | CH-008 | 2026-10-16 | Build from project paths that contain spaces | firmware | 012671a | build in `D:\Personal Yesid\...` | no |
