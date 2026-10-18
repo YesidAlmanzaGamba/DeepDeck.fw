@@ -14,6 +14,7 @@ export interface Menu {
     icon: string;
     label?: string;
     appOnly?: boolean;
+    webOnly?: boolean;
     children?: ChildrenItems[];
 }
 
@@ -37,11 +38,38 @@ const MENUITEMS: Menu[] = [
         icon: 'add_to_photos',
     },      
     {
+        state: 'lighting',
+        name: 'LIGHTING',
+        type: 'link',
+        icon: 'lightbulb',
+    },
+    {
+        state: 'wifi',
+        name: 'WIFI',
+        type: 'link',
+        icon: 'wifi',
+    },
+    {
+        state: 'device',
+        name: 'DEVICE',
+        type: 'link',
+        icon: 'memory',
+    },
+    {
+        // the web page's own settings (WiFi and LEDs); the app has the pages above instead
         state: 'network',
         name: 'SETTINGS',
         type: 'link',
         icon: 'settings',
-    },      
+        webOnly: true,
+    },
+    {
+        state: 'log',
+        name: 'LOG',
+        type: 'link',
+        icon: 'description',
+        appOnly: true,
+    },
     {
         state: 'connect',
         name: 'CONNECT',
@@ -65,8 +93,9 @@ export class MenuItems {
     get(type): Menu[] {
         switch(type){
             case 0:
-                // pages marked appOnly need the Command Center (Bluetooth / USB link)
-                return MENUITEMS.filter(item => !item.appOnly || !!(window as any).__TAURI__);                
+                // appOnly pages need the Command Center (Bluetooth / USB link); webOnly pages are replaced in it
+                const isApp = !!(window as any).__TAURI__;
+                return MENUITEMS.filter(item => (isApp ? !item.webOnly : !item.appOnly));                
             
         }        
     }

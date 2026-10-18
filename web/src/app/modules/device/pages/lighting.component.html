@@ -1,0 +1,86 @@
+<div class="dd-page" (mouseup)="painting = false" (mouseleave)="painting = false">
+  <h2>Lighting</h2>
+  <div class="dd-error" *ngIf="error">{{ error }}</div>
+  <div class="dd-ok" *ngIf="message">{{ message }}</div>
+
+  <div class="dd-card" *ngIf="led">
+    <div class="dd-row">
+      <h3 class="grow">Effect</h3>
+      <span class="muted" *ngIf="ledDirty">Preview on the DeepDeck: not saved yet</span>
+      <button class="btn-s" (click)="revertLed()" [disabled]="!ledDirty">Revert</button>
+      <button class="btn-p" (click)="saveLed()" [disabled]="!ledDirty">Save</button>
+    </div>
+
+    <div class="effects">
+      <button class="effect" *ngFor="let e of effects" [class.selected]="e.id === led.effect" (click)="setEffect(e.id)">
+        <mat-icon>{{ icon(e.id) }}</mat-icon>
+        <span>{{ e.name }}</span>
+      </button>
+    </div>
+
+    <div class="controls">
+      <label>Brightness
+        <mat-slider min="0" max="255" step="1" thumbLabel [(ngModel)]="led.brightness" (ngModelChange)="changed()"></mat-slider>
+      </label>
+      <label *ngIf="uses('speed')">Speed
+        <mat-slider min="0" max="255" step="1" thumbLabel [(ngModel)]="led.speed" (ngModelChange)="changed()"></mat-slider>
+      </label>
+      <label *ngIf="uses('color1')" class="color">Colour 1
+        <span class="swatch" [style.background]="color1" [(colorPicker)]="color1" (colorPickerChange)="changed()"
+          [cpOutputFormat]="'hex'" [cpPosition]="'bottom'"></span>
+      </label>
+      <label *ngIf="uses('color2') || led.reactive" class="color">Colour 2
+        <span class="swatch" [style.background]="color2" [(colorPicker)]="color2" (colorPickerChange)="changed()"
+          [cpOutputFormat]="'hex'" [cpPosition]="'bottom'"></span>
+      </label>
+      <mat-slide-toggle *ngIf="led.effect !== 0 && led.effect !== 1" [(ngModel)]="led.reactive" (ngModelChange)="changed()">
+        Light pressed keys (colour 2)
+      </mat-slide-toggle>
+    </div>
+  </div>
+
+  <div class="dd-card">
+    <div class="dd-row">
+      <h3 class="grow">Key colours per layer</h3>
+      <span class="muted" *ngIf="keysDirty">Preview: not saved yet</span>
+      <button class="btn-s" (click)="resetKeys()" [disabled]="!keysCustom">Defaults</button>
+      <button class="btn-p" (click)="saveKeys()" [disabled]="!keysDirty">Save colours</button>
+    </div>
+    <p class="muted" *ngIf="led && led.effect !== 5 && led.effect !== 10">
+      These colours show with the <strong>Per-key</strong> effect (layer colour with <strong>Layer colour</strong>).
+      <button class="btn-s small" (click)="showPerKey()">Use Per-key</button>
+    </p>
+
+    <div class="layer-list">
+      <button class="layer-chip" *ngFor="let l of layers" [class.active]="l.uuid === layerUuid" (click)="selectLayer(l.uuid)">{{ l.name }}</button>
+    </div>
+
+    <div class="painter">
+      <div class="pad">
+        <button *ngFor="let k of keys; let i = index" class="key" [style.background]="keyHex(i)"
+          (mousedown)="painting = true; paint(i)" (mouseenter)="enter(i)">
+          <span>{{ keyNames[i] }}</span>
+        </button>
+      </div>
+      <div class="tools">
+        <label class="color">Brush
+          <span class="swatch big" [style.background]="brush" [(colorPicker)]="brush" [cpOutputFormat]="'hex'" [cpPosition]="'bottom'"></span>
+        </label>
+        <button class="btn-s" (click)="fill()">Fill all</button>
+        <button class="btn-s" (click)="clear()">Turn all off</button>
+        <label class="color">Layer colour
+          <span class="swatch" [style.background]="layerColor" [(colorPicker)]="layerColor" (colorPickerChange)="keysChanged()"
+            [cpOutputFormat]="'hex'" [cpPosition]="'bottom'"></span>
+        </label>
+        <div class="copy">
+          <select [(ngModel)]="copyFrom">
+            <option value="">Copy from layer…</option>
+            <option *ngFor="let l of layers" [value]="l.uuid" [disabled]="l.uuid === layerUuid">{{ l.name }}</option>
+          </select>
+          <button class="btn-s" (click)="copyLayer()" [disabled]="!copyFrom">Copy</button>
+        </div>
+        <p class="muted">Click or drag over the keys to paint them.</p>
+      </div>
+    </div>
+  </div>
+</div>

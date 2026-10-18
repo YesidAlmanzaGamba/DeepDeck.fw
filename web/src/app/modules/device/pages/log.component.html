@@ -1,0 +1,15 @@
+<div class="dd-page">
+  <h2>Log</h2>
+  <p class="muted" *ngIf="device.status$.value.kind !== 'usb'">
+    The DeepDeck prints its log on the USB cable: connect over USB to see it here.
+  </p>
+  <div class="dd-row">
+    <input class="dd-input grow" placeholder="Filter" [(ngModel)]="filter">
+    <button class="btn-s" (click)="paused = !paused">{{ paused ? 'Resume' : 'Pause' }}</button>
+    <button class="btn-s" (click)="copy()">Copy</button>
+    <button class="btn-s" (click)="lines = []">Clear</button>
+  </div>
+  <div class="log" #box (scroll)="onScroll()">
+    <div *ngFor="let l of shown()" [class]="level(l)">{{ l }}</div>
+  </div>
+</div>

@@ -70,3 +70,19 @@
   &.disabled { opacity: 0.45; }
   .muted { display: block; }
 }
+
+.dd-input {
+  background: #1f1f22; border: 1px solid #4a4a50; border-radius: 5px; color: #eee;
+  padding: 7px 10px; font-size: 14px;
+  &:focus { outline: none; border-color: #dc9f10; }
+}
+.dd-device.ap { cursor: pointer; padding: 8px 14px; margin-bottom: 6px;
+  &:hover { border-color: #8a6a12; } }
+.btn-s.danger { border-color: #c0504d; color: #ff9a96; }
+
+.log {
+  background: #111113; border: 1px solid #333; border-radius: 8px; height: 62vh; overflow: auto;
+  padding: 8px 10px; font: 12px/1.45 Consolas, monospace; color: #c8c8c8; white-space: pre-wrap;
+  .w { color: #e8c35a; }
+  .e { color: #ff7d7d; }
+}

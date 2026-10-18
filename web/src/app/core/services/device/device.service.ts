@@ -150,7 +150,7 @@ export class DeviceService {
       case 'wifi.set':
         return this.http.post<T>(`${base}/connect`, body);
       default:
-        return throwError(() => new DeviceError('app_only', `${method} needs the DeepDeck Command Center app`));
+        return throwError(new DeviceError('app_only', `${method} needs the DeepDeck Command Center app`)); // rxjs 6
     }
   }
 

@@ -1,0 +1,33 @@
+<div class="dd-page">
+  <h2>Device</h2>
+  <div class="dd-error" *ngIf="error">{{ error }}</div>
+  <div class="dd-ok" *ngIf="message">{{ message }}</div>
+
+  <div class="dd-card">
+    <h3>Bluetooth name</h3>
+    <div class="dd-row" style="margin-top: 12px">
+      <input class="dd-input grow" [(ngModel)]="name" maxlength="20" placeholder="Ahuyama">
+      <button class="btn-p" (click)="rename()" [disabled]="!name || !!busy || name === info?.name">Save name</button>
+    </div>
+    <p class="muted">Used after a restart. 1 to 20 letters, digits or symbols.</p>
+  </div>
+
+  <div class="dd-card">
+    <h3>Backup and restore</h3>
+    <p class="muted">Layers, macros, lighting and key colours, in a JSON file on this computer.</p>
+    <div class="dd-row">
+      <button class="btn-p" (click)="backup()" [disabled]="!!busy || !device.isApp">{{ busy === 'backup' ? 'Saving…' : 'Back up to a file' }}</button>
+      <button class="btn-s" (click)="restore()" [disabled]="!!busy || !device.isApp">{{ busy === 'restore' ? 'Restoring…' : 'Restore from a file' }}</button>
+    </div>
+  </div>
+
+  <div class="dd-card">
+    <h3>Restart and reset</h3>
+    <div class="dd-row" style="margin-top: 12px">
+      <button class="btn-s" (click)="restart()" [disabled]="!!busy || !device.isApp">Restart the DeepDeck</button>
+      <button class="btn-s danger" (click)="factoryReset()" [disabled]="!!busy">Restore default layers and macros</button>
+    </div>
+  </div>
+
+  <p class="muted" *ngIf="!device.isApp">Backup, restore and restart need the DeepDeck Command Center app.</p>
+</div>

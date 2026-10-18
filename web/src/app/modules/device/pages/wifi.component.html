@@ -1,0 +1,40 @@
+<div class="dd-page">
+  <h2>WiFi</h2>
+  <div class="dd-error" *ngIf="error">{{ error }}</div>
+  <div class="dd-ok" *ngIf="message">{{ message }}</div>
+
+  <div class="dd-card dd-status" *ngIf="status" [class.ok]="status.state === 'connected'">
+    <mat-icon>{{ status.state === 'connected' ? 'wifi' : 'wifi_off' }}</mat-icon>
+    <div class="grow">
+      <div class="title">{{ status.state === 'connected' ? 'Connected to ' + status.ssid : (status.state === 'ap' ? 'Setup network (AHUYAMA)' : status.state) }}</div>
+      <div class="muted" *ngIf="status.ip">IP {{ status.ip }} · signal {{ status.rssi }} dBm</div>
+    </div>
+  </div>
+
+  <div class="dd-card">
+    <div class="dd-row">
+      <h3 class="grow">Networks</h3>
+      <button class="btn-p" (click)="scan()" [disabled]="scanning || !device.isApp">{{ scanning ? 'Scanning…' : 'Scan' }}</button>
+    </div>
+    <p class="muted" *ngIf="!device.isApp">Scanning needs the Command Center app. Type the network name below.</p>
+    <div class="dd-device ap" *ngFor="let ap of aps" (click)="pick(ap)" [class.current]="ap.ssid === ssid">
+      <mat-icon>{{ bars(ap.rssi) }}</mat-icon>
+      <div class="grow">
+        <div class="title">{{ ap.ssid }}</div>
+        <div class="muted">{{ ap.auth }} · channel {{ ap.channel }} · {{ ap.rssi }} dBm</div>
+      </div>
+      <mat-icon *ngIf="ap.auth !== 'OPEN'">lock</mat-icon>
+    </div>
+  </div>
+
+  <div class="dd-card">
+    <h3>Join a network</h3>
+    <div class="dd-row" style="margin-top: 12px">
+      <input class="dd-input grow" placeholder="Network name (SSID)" [(ngModel)]="ssid" maxlength="32">
+      <input class="dd-input grow" [type]="showPass ? 'text' : 'password'" placeholder="Password" [(ngModel)]="pass" maxlength="64">
+      <button class="btn-s" (click)="showPass = !showPass"><mat-icon>{{ showPass ? 'visibility_off' : 'visibility' }}</mat-icon></button>
+      <button class="btn-p" (click)="connect()" [disabled]="!ssid || sending">{{ sending ? 'Sending…' : 'Connect' }}</button>
+    </div>
+    <p class="muted">The DeepDeck stores the credentials and restarts to join the network.</p>
+  </div>
+</div>
