@@ -10,6 +10,7 @@ Add new entries on top, with the next `CH-` number.
 
 | ID | Date | Change | Area | Commits | Verified | Hardware |
 |----|------|--------|------|---------|----------|----------|
+| CH-036 | 2026-10-19 | README tour with a screenshot of every Command Center page (personal data masked), video slots; app version 0.7.0; release v0.7.0 published by CI | docs, CI | (branch `phase4`) | screenshots reviewed one by one | n/a |
 | CH-035 | 2026-10-18 | App command keys: a DeepDeck key makes the Command Center run a command on the computer (herdr presets) | firmware, app | (branch `phase4`) | a `key.app` event ran the command (file written, logged); selftest 0 failures | partly (owner: a real key press) |
 | CH-034 | 2026-10-18 | Firmware in the app (bundled + history of installed images) on the Update page; installers for Windows, macOS and Linux in CI; installation manual | app, CI, docs | (branch `phase4`) | install from the list over USB (history copy kept); workflow parsed; first CI run green | yes (automated) |
 | CH-033 | 2026-10-18 | App layout fills the window (flex shell, collapsing menu, fluid pages) and opens maximized | app | 6ee264c | screenshots at 1920x1040 and 1000x680 | n/a |

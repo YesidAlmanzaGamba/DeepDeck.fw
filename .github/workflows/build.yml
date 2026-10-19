@@ -111,7 +111,16 @@ jobs:
           cp DeepDeck.bin ../DeepDeck-${GITHUB_REF_NAME}.bin
       - uses: softprops/action-gh-release@v2
         with:
-          draft: true
+          draft: false
+          name: DeepDeck ${{ github.ref_name }}
+          body: |
+            Install the **DeepDeck Command Center** for your system (see the [installation manual](https://github.com/${{ github.repository }}/blob/main/docs/INSTALL.md)):
+
+            - Windows: `DeepDeck Command Center_*_x64-setup.exe`
+            - macOS: `DeepDeck Command Center_*.dmg`
+            - Linux: `.deb` or `.AppImage`
+
+            The app contains this firmware: update the DeepDeck from its **Update** page. `DeepDeck-${{ github.ref_name }}.bin` is the same image for the Update page's "Choose a .bin file"; `DeepDeck-firmware-${{ github.ref_name }}.zip` is for a first flash with esptool (old DeepDecks).
           generate_release_notes: true
           files: |
             artifacts/command-center-*/**/*

@@ -1,6 +1,6 @@
 [package]
 name = "deepdeck-command-center"
-version = "0.1.0"
+version = "0.7.0"
 edition = "2021"
 description = "DeepDeck Command Center: configure the DeepDeck over BLE or USB"
 
